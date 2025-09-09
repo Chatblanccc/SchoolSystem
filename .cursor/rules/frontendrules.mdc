@@ -1,0 +1,1604 @@
+---
+alwaysApply: false
+---
+# BYSS 学校管理系统 - 前端开发规范
+
+## 技术栈详细说明
+
+### 核心依赖
+```json
+{
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.20.0",
+    "axios": "^1.6.0",
+    "zustand": "^5.0.0",
+    "react-hook-form": "^7.48.0",
+    "zod": "^3.22.0",
+    "@hookform/resolvers": "^3.3.0",
+    "@tanstack/react-table": "^8.10.0",
+    "@tanstack/react-query": "^5.0.0",
+    "dayjs": "^1.11.0",
+    "recharts": "^2.10.0",
+    "lucide-react": "^0.300.0",
+    "clsx": "^2.0.0",
+    "tailwind-merge": "^2.2.0",
+    "class-variance-authority": "^0.7.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "vite": "^5.0.0",
+    "@vitejs/plugin-react-swc": "^4.2.0",
+    "tailwindcss": "^3.4.0",
+    "postcss": "^8.4.0",
+    "autoprefixer": "^10.4.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@types/node": "^20.0.0",
+    "eslint": "^8.55.0",
+    "prettier": "^3.1.0",
+    "@typescript-eslint/eslint-plugin": "^6.14.0",
+    "@typescript-eslint/parser": "^6.14.0"
+  }
+}
+```
+
+### 项目结构
+```
+frontend/
+├── src/
+│   ├── app/                      # 应用层
+│   │   ├── App.tsx              # 根组件
+│   │   ├── providers/           # 全局 Provider
+│   │   │   ├── AuthProvider.tsx
+│   │   │   ├── ThemeProvider.tsx
+│   │   │   └── QueryProvider.tsx
+│   │   └── router/              # 路由配置
+│   │       ├── index.tsx
+│   │       ├── routes.tsx
+│   │       └── PrivateRoute.tsx
+│   │
+│   ├── pages/                   # 页面组件
+│   │   ├── auth/               # 认证相关页面
+│   │   ├── dashboard/          # 仪表盘
+│   │   ├── students/           # 学生管理
+│   │   ├── teachers/           # 教师管理
+│   │   ├── courses/            # 课程管理
+│   │   └── settings/           # 系统设置
+│   │
+│   ├── features/               # 业务功能模块
+│   │   ├── auth/              # 认证功能
+│   │   │   ├── components/
+│   │   │   ├── hooks/
+│   │   │   ├── services/
+│   │   │   ├── stores/
+│   │   │   └── types/
+│   │   ├── students/          # 学生模块
+│   │   ├── teachers/          # 教师模块
+│   │   └── courses/           # 课程模块
+│   │
+│   ├── components/            # 通用组件
+│   │   ├── ui/               # 基础 UI 组件
+│   │   │   ├── button.tsx
+│   │   │   ├── input.tsx
+│   │   │   ├── card.tsx
+│   │   │   ├── table.tsx           # 表格组件
+│   │   │   ├── virtual-table.tsx   # 虚拟化表格组件
+│   │   │   ├── theme-toggle.tsx    # 主题切换组件
+│   │   │   ├── dropdown.tsx        # 下拉菜单组件
+│   │   │   └── ...
+│   │   ├── layout/           # 布局组件
+│   │   │   ├── Header.tsx
+│   │   │   ├── Sidebar.tsx
+│   │   │   └── Layout.tsx
+│   │   └── shared/           # 业务组件
+│   │       ├── SimpleVirtualStudentTable.tsx  # 高性能虚拟化学生表格
+│   │       ├── StudentDetailCard.tsx          # 学生详情卡片
+│   │       ├── StudentDetailModal.tsx         # 学生详情弹窗
+│   │       ├── Pagination.tsx                 # 分页组件
+│   │       ├── StatsCard.tsx                  # 统计卡片
+│   │       └── LoadingSpinner.tsx
+│   │
+│   ├── lib/                  # 工具库
+│   │   ├── axios.ts         # HTTP 客户端配置
+│   │   ├── utils.ts         # 工具函数
+│   │   ├── constants.ts     # 常量定义
+│   │   └── validators.ts    # 通用验证器
+│   │
+│   ├── hooks/               # 全局 Hooks
+│   │   ├── useAuth.ts
+│   │   ├── useDebounce.ts
+│   │   ├── usePagination.ts
+│   │   └── useLocalStorage.ts
+│   │
+│   ├── stores/              # 全局状态管理
+│   │   └── themeStore.ts   # 主题状态管理
+│   │
+│   ├── styles/              # 样式文件
+│   │   ├── globals.css     # 全局样式
+│   │   └── tailwind.css    # Tailwind 配置
+│   │
+│   └── types/              # TypeScript 类型
+│       ├── global.d.ts     # 全局类型
+│       ├── api.ts          # API 类型
+│       └── models.ts       # 数据模型
+│
+├── public/                 # 静态资源
+├── tests/                  # 测试文件
+├── .env.example           # 环境变量示例
+├── .eslintrc.js          # ESLint 配置
+├── .prettierrc           # Prettier 配置
+├── tailwind.config.js    # Tailwind 配置
+├── tsconfig.json         # TypeScript 配置
+├── vite.config.ts        # Vite 配置
+└── package.json
+```
+
+## 开发规范
+
+### 1. 页面设计规范
+
+#### 页面标题和统计信息优化原则
+
+基于用户体验优化，页面标题区域应遵循以下原则：
+
+1. **简洁性原则**：
+   - 避免在页面标题区域添加过多的装饰性元素
+   - 移除不必要的统计卡片和状态标签
+   - 保持页面布局的简洁和专注
+
+2. **功能性优先**：
+   - 页面标题应直接反映页面功能，无需额外说明
+   - 统计信息应集成到分页组件或数据表格中
+   - 避免重复显示相同的信息
+
+3. **空间利用**：
+   - 减少页面顶部的视觉噪音
+   - 为核心功能区域预留更多空间
+   - 提高页面内容的信息密度
+
+4. **最佳实践**：
+   ```typescript
+   // ❌ 避免：过度装饰的页面标题
+   <div className="flex items-center justify-between">
+     <div>
+       <div className="flex items-center space-x-2 mb-2">
+         <h2 className="text-3xl font-bold tracking-tight">学生管理</h2>
+         <div className="flex items-center space-x-1 px-2 py-1 bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-full text-xs">
+           <span>🚀</span>
+           <span>虚拟化加速</span>
+         </div>
+       </div>
+       <p className="text-muted-foreground">高性能虚拟化表格，管理学校学生信息和档案</p>
+     </div>
+     <div className="flex items-center gap-4">
+       <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 text-primary rounded-lg">
+         <Users className="h-4 w-4" />
+         <span className="text-sm font-medium">总计 {total} 名学生</span>
+       </div>
+     </div>
+   </div>
+
+   // ✅ 推荐：简洁的页面布局
+   <div className="space-y-6">
+     {/* 直接进入功能区域 */}
+     <div className="flex items-center justify-between">
+       {/* 操作按钮 */}
+       {/* 搜索筛选 */}
+     </div>
+   </div>
+   ```
+
+5. **信息整合原则**：
+   - 将统计信息整合到分页组件中显示
+   - 性能标识通过组件内部状态体现
+   - 避免在多个位置重复显示相同数据
+
+### 2. 组件开发规范
+#### 删除操作统一确认弹窗规范（新增）
+
+- 所有删除操作必须使用自定义确认弹窗，不使用浏览器原生 `confirm`。
+- 组件：`ConfirmDialog`（统一风格、标题、描述、危险态按钮）。
+- 行为要求：
+  - 阻止冒泡，避免触发行点击
+  - 明确描述被删除对象名称并提示不可撤销
+  - 成功后刷新当前列表或移除相应行
+  - 失败时给出 toast/对话框提示
+
+示例：
+```tsx
+<ConfirmDialog
+  isOpen={confirmOpen}
+  title="删除班级"
+  description={`确定要删除班级「${item.name}」吗？该操作不可撤销。`}
+  confirmText="删除"
+  cancelText="取消"
+  danger
+  onCancel={close}
+  onConfirm={handleDelete}
+/>
+```
+
+
+#### 组件文件结构
+```typescript
+// components/ui/Button.tsx
+import { forwardRef } from 'react'
+import { cva, type VariantProps } from 'class-variance-authority'
+import { cn } from '@/lib/utils'
+
+const buttonVariants = cva(
+  'inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50',
+  {
+    variants: {
+      variant: {
+        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
+        destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+        outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
+        secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+        ghost: 'hover:bg-accent hover:text-accent-foreground',
+        link: 'text-primary underline-offset-4 hover:underline',
+      },
+      size: {
+        default: 'h-10 px-4 py-2',
+        sm: 'h-9 rounded-md px-3',
+        lg: 'h-11 rounded-md px-8',
+        icon: 'h-10 w-10',
+      },
+    },
+    defaultVariants: {
+      variant: 'default',
+      size: 'default',
+    },
+  }
+)
+
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean
+}
+
+const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot : 'button'
+    return (
+      <Comp
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        {...props}
+      />
+    )
+  }
+)
+
+Button.displayName = 'Button'
+
+export { Button, buttonVariants }
+```
+
+#### 页面组件规范
+```typescript
+// pages/students/StudentList.tsx
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { DataTable } from '@/components/shared/DataTable'
+import { useStudents } from '@/features/students/hooks/useStudents'
+
+export default function StudentList() {
+  const [page, setPage] = useState(1)
+  const [search, setSearch] = useState('')
+  
+  const { data, isLoading, error } = useStudents({
+    page,
+    search,
+    pageSize: 20
+  })
+
+  if (error) {
+    return <ErrorBoundary error={error} />
+  }
+
+  return (
+    <div className="container mx-auto py-6">
+      <h1 className="text-3xl font-bold mb-6">学生管理</h1>
+      <DataTable
+        data={data?.results || []}
+        columns={studentColumns}
+        pagination={data?.pagination}
+        isLoading={isLoading}
+        onPageChange={setPage}
+      />
+    </div>
+  )
+}
+```
+
+#### 侧边栏下拉菜单规范
+
+BYSS 学校管理系统中的侧边栏下拉菜单应遵循统一的设计和动画规范，提供一致的用户体验。
+
+##### 设计原则
+
+1. **流畅动画**：
+   - 展开动画：向下滑动 + 渐隐渐显，过渡时长 300ms
+   - 箭头旋转：从右侧（0°）旋转到下方（90°），过渡时长 200ms
+   - 使用 `ease-in-out` 缓动函数，提供自然的动画效果
+
+2. **智能状态管理**：
+   - 当用户访问子页面时，父菜单自动展开
+   - 父菜单在展开状态或有子页面激活时保持高亮
+   - 选中子菜单后保持展开状态，让用户看到当前位置
+
+3. **视觉层次**：
+   - 子菜单使用左侧边框线表示层级关系
+   - 子菜单项使用较小的字体（text-sm）和图标
+   - 激活状态有明显的高亮效果
+   - 悬停效果使用半透明背景
+
+##### 标准实现
+
+```typescript
+// 侧边栏下拉菜单标准实现
+import { useState, useEffect } from "react"
+import { ChevronDown } from "lucide-react"
+import { cn } from "@/lib/utils"
+
+export function SidebarDropdownMenu() {
+  const [isExpanded, setIsExpanded] = useState(false)
+  
+  // 子菜单项配置
+  const subMenuItems = [
+    { icon: Icon1, label: "子菜单1", page: "submenu1" },
+    { icon: Icon2, label: "子菜单2", page: "submenu2" },
+    { icon: Icon3, label: "子菜单3", page: "submenu3" },
+  ]
+  
+  // 检查是否是相关子页面
+  const isSubPageActive = ['submenu1', 'submenu2', 'submenu3'].includes(currentPage)
+  
+  // 处理展开/收起
+  const handleToggle = () => {
+    setIsExpanded(!isExpanded)
+  }
+  
+  // 处理子菜单点击
+  const handleSubMenuClick = (page: Page) => {
+    handleNavigation(page)
+    // 不要在这里收起菜单，让用户能看到当前选中的子项
+  }
+  
+  // 当前页面是相关子页面时，自动展开菜单
+  useEffect(() => {
+    if (isSubPageActive) {
+      setIsExpanded(true)
+    }
+  }, [isSubPageActive])
+
+  return (
+    <li>
+      <div>
+        {/* 父菜单按钮 */}
+        <button
+          onClick={handleToggle}
+          className={cn(
+            "flex items-center space-x-3 px-4 py-2.5 rounded-lg transition-colors w-full text-left relative",
+            isSubPageActive || isExpanded
+              ? "bg-primary text-primary-foreground" 
+              : "hover:bg-accent"
+          )}
+        >
+          <ParentIcon className="h-5 w-5" />
+          <span className="font-medium flex-1">父菜单名称</span>
+          <ChevronDown 
+            className={cn(
+              "h-4 w-4 transition-transform duration-200",
+              isExpanded ? "rotate-90" : "rotate-0"
+            )} 
+          />
+        </button>
+        
+        {/* 子菜单区域 */}
+        <div
+          className={cn(
+            "overflow-hidden transition-all duration-300 ease-in-out",
+            isExpanded 
+              ? "max-h-40 opacity-100 mt-1" 
+              : "max-h-0 opacity-0"
+          )}
+        >
+          <div className="ml-4 border-l border-border pl-4 space-y-1">
+            {subMenuItems.map((item) => {
+              const Icon = item.icon
+              const isSubActive = currentPage === item.page
+              return (
+                <button
+                  key={item.page}
+                  onClick={() => handleSubMenuClick(item.page)}
+                  className={cn(
+                    "flex items-center space-x-3 px-3 py-2 rounded-md transition-colors w-full text-left text-sm",
+                    isSubActive 
+                      ? "bg-accent text-accent-foreground font-medium" 
+                      : "hover:bg-accent/50 text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{item.label}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    </li>
+  )
+}
+```
+
+##### 关键 CSS 类名
+
+```css
+/* 展开动画 */
+.dropdown-container {
+  @apply overflow-hidden transition-all duration-300 ease-in-out;
+}
+
+.dropdown-expanded {
+  @apply max-h-40 opacity-100 mt-1;
+}
+
+.dropdown-collapsed {
+  @apply max-h-0 opacity-0;
+}
+
+/* 箭头旋转 */
+.dropdown-arrow {
+  @apply h-4 w-4 transition-transform duration-200;
+}
+
+.dropdown-arrow-expanded {
+  @apply rotate-90;
+}
+
+.dropdown-arrow-collapsed {
+  @apply rotate-0;
+}
+
+/* 子菜单样式 */
+.submenu-container {
+  @apply ml-4 border-l border-border pl-4 space-y-1;
+}
+
+.submenu-item {
+  @apply flex items-center space-x-3 px-3 py-2 rounded-md transition-colors w-full text-left text-sm;
+}
+
+.submenu-item-active {
+  @apply bg-accent text-accent-foreground font-medium;
+}
+
+.submenu-item-inactive {
+  @apply hover:bg-accent/50 text-muted-foreground hover:text-foreground;
+}
+```
+
+##### 最佳实践
+
+1. **动画时长**：
+   - 展开动画：300ms（足够看清动画过程，不会太慢）
+   - 箭头旋转：200ms（快速响应，与展开动画协调）
+
+2. **状态管理**：
+   - 使用 `useState` 管理展开状态
+   - 使用 `useEffect` 监听当前页面变化，自动展开相关菜单
+   - 避免在子菜单点击后立即收起，保持用户的位置感知
+
+3. **视觉设计**：
+   - 父菜单和子菜单使用不同的背景色和字体大小
+   - 左侧边框线清晰表示层级关系
+   - 激活状态使用主题色高亮
+
+4. **可访问性**：
+   - 确保键盘导航支持
+   - 提供适当的 ARIA 标签
+   - 保持足够的颜色对比度
+
+5. **响应式设计**：
+   - 在小屏幕设备上保持良好的可用性
+   - 考虑触摸设备的交互体验
+
+##### 应用场景
+
+- 侧边栏导航菜单的多级结构
+- 设置面板的分类选项
+- 功能模块的子功能导航
+- 任何需要层级展示的菜单结构
+
+### 2. 状态管理规范
+
+#### Zustand Store
+```typescript
+// features/auth/stores/authStore.ts
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+import type { User, AuthTokens } from '../types'
+
+interface AuthState {
+  user: User | null
+  tokens: AuthTokens | null
+  isAuthenticated: boolean
+  login: (user: User, tokens: AuthTokens) => void
+  logout: () => void
+  updateTokens: (tokens: AuthTokens) => void
+}
+
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      user: null,
+      tokens: null,
+      isAuthenticated: false,
+      
+      login: (user, tokens) => {
+        set({
+          user,
+          tokens,
+          isAuthenticated: true
+        })
+      },
+      
+      logout: () => {
+        set({
+          user: null,
+          tokens: null,
+          isAuthenticated: false
+        })
+      },
+      
+      updateTokens: (tokens) => {
+        set({ tokens })
+      }
+    }),
+    {
+      name: 'auth-storage',
+      partialize: (state) => ({
+        tokens: state.tokens,
+        user: state.user
+      })
+    }
+  )
+)
+```
+
+### 3. API 集成规范
+
+#### Axios 配置
+```typescript
+// lib/axios.ts
+import axios from 'axios'
+import { useAuthStore } from '@/features/auth/stores/authStore'
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
+
+export const api = axios.create({
+  baseURL: API_URL,
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+})
+
+// 请求拦截器
+api.interceptors.request.use(
+  (config) => {
+    const tokens = useAuthStore.getState().tokens
+    if (tokens?.access) {
+      config.headers.Authorization = `Bearer ${tokens.access}`
+    }
+    return config
+  },
+  (error) => {
+    return Promise.reject(error)
+  }
+)
+
+// 响应拦截器
+api.interceptors.response.use(
+  (response) => {
+    return response.data
+  },
+  async (error) => {
+    const originalRequest = error.config
+    
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true
+      
+      try {
+        const tokens = useAuthStore.getState().tokens
+        if (tokens?.refresh) {
+          const { data } = await axios.post(`${API_URL}/auth/refresh/`, {
+            refresh: tokens.refresh
+          })
+          
+          useAuthStore.getState().updateTokens({
+            access: data.access,
+            refresh: tokens.refresh
+          })
+          
+          originalRequest.headers.Authorization = `Bearer ${data.access}`
+          return api(originalRequest)
+        }
+      } catch (refreshError) {
+        useAuthStore.getState().logout()
+        window.location.href = '/login'
+      }
+    }
+    
+    return Promise.reject(error)
+  }
+)
+```
+
+#### API Service
+```typescript
+// features/students/services/studentService.ts
+import { api } from '@/lib/axios'
+import type { Student, PaginatedResponse, StudentCreateInput } from '../types'
+
+export const studentService = {
+  // 获取学生列表
+  async getStudents(params: {
+    page?: number
+    pageSize?: number
+    search?: string
+    classId?: number
+  }): Promise<PaginatedResponse<Student>> {
+    return api.get('/students/', {
+      params: {
+        page: params.page || 1,
+        page_size: params.pageSize || 20,
+        search: params.search,
+        class_id: params.classId
+      }
+    })
+  },
+
+  // 获取单个学生
+  async getStudent(id: string): Promise<Student> {
+    return api.get(`/students/${id}/`)
+  },
+
+  // 创建学生
+  async createStudent(data: StudentCreateInput): Promise<Student> {
+    return api.post('/students/', data)
+  },
+
+  // 更新学生
+  async updateStudent(id: string, data: Partial<Student>): Promise<Student> {
+    return api.patch(`/students/${id}/`, data)
+  },
+
+  // 删除学生
+  async deleteStudent(id: string): Promise<void> {
+    return api.delete(`/students/${id}/`)
+  }
+}
+```
+
+### 4. React Query 集成
+
+```typescript
+// features/students/hooks/useStudents.ts
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { studentService } from '../services/studentService'
+import { toast } from '@/components/ui/use-toast'
+
+export function useStudents(params: {
+  page?: number
+  search?: string
+  classId?: number
+}) {
+  return useQuery({
+    queryKey: ['students', params],
+    queryFn: () => studentService.getStudents(params),
+    staleTime: 5 * 60 * 1000, // 5分钟
+  })
+}
+
+export function useCreateStudent() {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: studentService.createStudent,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['students'] })
+      toast({
+        title: '成功',
+        description: '学生创建成功'
+      })
+    },
+    onError: (error) => {
+      toast({
+        title: '错误',
+        description: error.message,
+        variant: 'destructive'
+      })
+    }
+  })
+}
+```
+
+### 5. 表单处理规范
+
+```typescript
+// features/students/components/StudentForm.tsx
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+
+const studentSchema = z.object({
+  name: z.string().min(2, '姓名至少2个字符'),
+  studentId: z.string().regex(/^\d{10}$/, '学号必须是10位数字'),
+  email: z.string().email('请输入有效的邮箱'),
+  phone: z.string().regex(/^1[3-9]\d{9}$/, '请输入有效的手机号'),
+  classId: z.number().positive('请选择班级'),
+  birthDate: z.string().min(1, '请选择出生日期')
+})
+
+type StudentFormData = z.infer<typeof studentSchema>
+
+interface StudentFormProps {
+  onSubmit: (data: StudentFormData) => void
+  defaultValues?: Partial<StudentFormData>
+}
+
+export function StudentForm({ onSubmit, defaultValues }: StudentFormProps) {
+  const form = useForm<StudentFormData>({
+    resolver: zodResolver(studentSchema),
+    defaultValues: {
+      name: '',
+      studentId: '',
+      email: '',
+      phone: '',
+      ...defaultValues
+    }
+  })
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>姓名</FormLabel>
+              <FormControl>
+                <Input placeholder="请输入学生姓名" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="studentId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>学号</FormLabel>
+              <FormControl>
+                <Input placeholder="请输入10位学号" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <Button type="submit" disabled={form.formState.isSubmitting}>
+          {form.formState.isSubmitting ? '提交中...' : '提交'}
+        </Button>
+      </form>
+    </Form>
+  )
+}
+```
+
+### 6. 样式规范
+
+#### Tailwind 配置要求
+
+1. **基础配置**：
+   - 启用 `darkMode: 'class'` 支持主题切换
+   - 正确配置 content 路径以确保样式生效
+   - 使用 CSS 变量进行动态主题配色
+
+2. **颜色系统**：
+   - 所有颜色必须使用 `hsl(var(--variable))` 格式
+   - 支持浅色和深色两套完整配色方案
+   - 确保足够的对比度以满足可访问性要求
+
+3. **响应式设计**：
+   - 优先使用 Tailwind 的响应式前缀
+   - 移动优先的设计原则
+   - 确保在所有设备上的良好显示效果
+
+详细的主题配色和 CSS 变量定义请参考第7章主题系统规范。
+
+### 7. 主题系统规范
+
+BYSS 学校管理系统实现了完整的全局主题系统，支持浅色模式、深色模式和跟随系统设置。
+
+#### 主题状态管理
+
+使用 Zustand 进行全局主题状态管理：
+
+```typescript
+// stores/themeStore.ts
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+
+export type Theme = 'light' | 'dark' | 'system'
+
+interface ThemeState {
+  theme: Theme
+  isDark: boolean
+  setTheme: (theme: Theme) => void
+  toggleTheme: () => void
+}
+
+const getSystemTheme = (): boolean => {
+  if (typeof window !== 'undefined') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+  }
+  return false
+}
+
+const applyTheme = (theme: Theme) => {
+  const root = document.documentElement
+  
+  if (theme === 'system') {
+    const systemIsDark = getSystemTheme()
+    root.classList.toggle('dark', systemIsDark)
+    return systemIsDark
+  } else {
+    root.classList.toggle('dark', theme === 'dark')
+    return theme === 'dark'
+  }
+}
+
+export const useThemeStore = create<ThemeState>()(
+  persist(
+    (set, get) => ({
+      theme: 'system',
+      isDark: getSystemTheme(),
+      
+      setTheme: (theme: Theme) => {
+        const isDark = applyTheme(theme)
+        set({ theme, isDark })
+      },
+      
+      toggleTheme: () => {
+        const currentTheme = get().theme
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark'
+        get().setTheme(newTheme)
+      }
+    }),
+    {
+      name: 'theme-storage',
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.isDark = applyTheme(state.theme)
+        }
+      }
+    }
+  )
+)
+```
+
+#### 主题 Provider
+
+```typescript
+// components/providers/ThemeProvider.tsx
+import { useEffect } from 'react'
+import type { ReactNode } from 'react'
+import { useThemeStore } from '@/stores/themeStore'
+
+interface ThemeProviderProps {
+  children: ReactNode
+}
+
+export function ThemeProvider({ children }: ThemeProviderProps) {
+  const { theme, setTheme } = useThemeStore()
+
+  useEffect(() => {
+    setTheme(theme)
+  }, [theme, setTheme])
+
+  return <>{children}</>
+}
+```
+
+#### 主题切换组件
+
+提供多种主题切换组件：
+
+```typescript
+// components/ui/theme-toggle.tsx
+import { Moon, Sun, Monitor, ChevronDown } from 'lucide-react'
+import { useThemeStore } from '@/stores/themeStore'
+import type { Theme } from '@/stores/themeStore'
+import { cn } from '@/lib/utils'
+
+// 下拉菜单式主题选择器
+export function ThemeToggle() {
+  const { theme, setTheme } = useThemeStore()
+
+  const themes: { value: Theme; icon: React.ElementType; label: string }[] = [
+    { value: 'light', icon: Sun, label: '浅色模式' },
+    { value: 'dark', icon: Moon, label: '深色模式' },
+    { value: 'system', icon: Monitor, label: '跟随系统' }
+  ]
+
+  return (
+    <Dropdown>
+      <DropdownTrigger>
+        <CurrentIcon className="h-4 w-4" />
+        <span>{currentTheme?.label}</span>
+        <ChevronDown className="h-3 w-3" />
+      </DropdownTrigger>
+      <DropdownContent>
+        {themes.map(({ value, icon: Icon, label }) => (
+          <DropdownItem onClick={() => setTheme(value)}>
+            <Icon className="h-4 w-4" />
+            <span>{label}</span>
+          </DropdownItem>
+        ))}
+      </DropdownContent>
+    </Dropdown>
+  )
+}
+
+// 简单的切换按钮
+export function SimpleThemeToggle() {
+  const { isDark, toggleTheme } = useThemeStore()
+
+  return (
+    <button onClick={toggleTheme}>
+      {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+    </button>
+  )
+}
+```
+
+#### 暗色模式配色规范
+
+深邃黑色主题配色方案：
+
+```css
+@layer base {
+  :root {
+    /* 浅色模式 */
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* 深邃黑色主题 */
+    --background: 0 0% 3%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 6%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 6%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 210 100% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 0 0% 90%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 0 0% 12%;
+    --accent-foreground: 0 0% 95%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 15%;
+    --input: 0 0% 10%;
+    --ring: 210 100% 60%;
+  }
+}
+```
+
+#### 图表主题支持
+
+为 Recharts 图表添加主题感知：
+
+```typescript
+// 在组件中使用主题感知的图表
+export default function Dashboard() {
+  const { isDark } = useThemeStore()
+  
+  // 图表颜色配置
+  const chartColors = {
+    primary: isDark ? '#60a5fa' : '#3b82f6',
+    secondary: isDark ? '#34d399' : '#10b981',
+    tertiary: isDark ? '#fbbf24' : '#f59e0b',
+    text: isDark ? '#e5e7eb' : '#374151',
+    grid: isDark ? '#374151' : '#e5e7eb',
+  }
+
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={data}>
+        <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
+        <XAxis dataKey="month" tick={{ fill: chartColors.text, fontSize: 12 }} />
+        <YAxis tick={{ fill: chartColors.text, fontSize: 12 }} />
+        <Tooltip 
+          contentStyle={{
+            backgroundColor: isDark ? '#1f1f1f' : '#ffffff',
+            border: `1px solid ${chartColors.grid}`,
+            borderRadius: '8px',
+            color: chartColors.text
+          }}
+        />
+        <Line 
+          type="monotone" 
+          dataKey="students" 
+          stroke={chartColors.primary} 
+          strokeWidth={2}
+          dot={{ fill: chartColors.primary }}
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  )
+}
+```
+
+#### 组件主题优化
+
+为关键组件添加暗色模式优化：
+
+```typescript
+// Header 组件优化
+export function Header() {
+  return (
+    <header className="fixed top-0 left-0 right-0 z-50 bg-background border-b dark:bg-card backdrop-blur supports-[backdrop-filter]:bg-background/95">
+      {/* ... */}
+    </header>
+  )
+}
+
+// Sidebar 组件优化
+export function Sidebar() {
+  return (
+    <aside className="fixed left-0 top-16 w-64 h-[calc(100vh-4rem)] bg-background border-r dark:bg-card">
+      {/* ... */}
+    </aside>
+  )
+}
+```
+
+#### 主题系统最佳实践
+
+1. **状态管理**：
+   - 使用 Zustand 进行全局主题状态管理
+   - 实现持久化存储用户偏好
+   - 支持系统主题变化监听
+
+2. **配色原则**：
+   - 浅色模式：白色背景，深色文字
+   - 深色模式：深邃黑色背景（3% 明度），高对比度文字
+   - 创建视觉层次：背景 3% → 卡片 6% → 交互元素 10-12%
+
+3. **组件适配**：
+   - 所有组件必须支持 `dark:` 前缀类
+   - 图表组件需要动态配色
+   - 交互元素需要在两种模式下都清晰可见
+
+4. **用户体验**：
+   - 提供多种切换方式（简单切换、下拉选择、内联选择）
+   - 无闪烁的主题切换
+   - 记住用户偏好设置
+
+5. **可访问性**：
+   - 确保充足的颜色对比度
+   - 支持键盘导航
+   - 提供屏幕阅读器友好的标签
+
+### 8. 测试规范
+
+```typescript
+// tests/components/Button.test.tsx
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { Button } from '@/components/ui/button'
+
+describe('Button', () => {
+  it('renders correctly', () => {
+    render(<Button>Click me</Button>)
+    expect(screen.getByRole('button')).toHaveTextContent('Click me')
+  })
+
+  it('handles click events', async () => {
+    const handleClick = vi.fn()
+    render(<Button onClick={handleClick}>Click me</Button>)
+    
+    await userEvent.click(screen.getByRole('button'))
+    expect(handleClick).toHaveBeenCalledTimes(1)
+  })
+
+  it('can be disabled', () => {
+    render(<Button disabled>Click me</Button>)
+    expect(screen.getByRole('button')).toBeDisabled()
+  })
+})
+```
+
+### 9. 性能优化
+
+#### 代码分割
+```typescript
+// router/routes.tsx
+import { lazy, Suspense } from 'react'
+import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
+
+const Dashboard = lazy(() => import('@/pages/dashboard/Dashboard'))
+const StudentList = lazy(() => import('@/pages/students/StudentList'))
+const TeacherList = lazy(() => import('@/pages/teachers/TeacherList'))
+
+export const routes = [
+  {
+    path: '/dashboard',
+    element: (
+      <Suspense fallback={<LoadingSpinner />}>
+        <Dashboard />
+      </Suspense>
+    )
+  },
+  // ...
+]
+```
+
+#### 组件优化
+```typescript
+// 使用 memo 优化重渲染
+import { memo } from 'react'
+
+export const StudentCard = memo(({ student }: { student: Student }) => {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{student.name}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p>学号: {student.studentId}</p>
+        <p>班级: {student.className}</p>
+      </CardContent>
+    </Card>
+  )
+})
+
+// 使用 useMemo 缓存计算结果
+const expensiveValue = useMemo(() => {
+  return computeExpensiveValue(data)
+}, [data])
+
+// 使用 useCallback 缓存函数
+const handleSearch = useCallback((value: string) => {
+  setSearch(value)
+}, [])
+```
+
+### 10. 环境配置
+
+```bash
+# .env.development
+VITE_API_URL=http://localhost:8000/api/v1
+VITE_APP_TITLE=BYSS 学校管理系统
+VITE_ENABLE_MOCK=true
+
+# .env.production
+VITE_API_URL=https://api.byss.edu.cn/api/v1
+VITE_APP_TITLE=BYSS 学校管理系统
+VITE_ENABLE_MOCK=false
+```
+
+### 11. 可折叠组件设计规范
+
+BYSS 学校管理系统中的设置面板和配置区域应使用可折叠设计，提供更好的用户体验。
+
+#### 可折叠组件核心原则
+
+1. **默认折叠状态**：
+   - 所有设置面板默认处于折叠状态
+   - 减少页面初始加载时的视觉复杂度
+   - 让用户专注于主要功能
+
+2. **智能自动折叠**：
+   - 用户完成设置后自动折叠（延迟1秒）
+   - 刷新操作不自动折叠，用户可能需要查看结果
+   - 提供视觉反馈，让用户看到设置生效
+
+3. **状态预览**：
+   - 折叠状态下显示当前设置的关键信息
+   - 使用简洁的文本格式（如：20条/页 • 500px高）
+   - 帮助用户快速了解当前配置
+
+4. **交互设计**：
+   ```typescript
+   // 可折叠设置组件示例
+   export function CollapsibleTableSettings({
+     pageSize,
+     onPageSizeChange,
+     tableHeight,
+     onTableHeightChange,
+     defaultExpanded = false
+   }) {
+     const [isExpanded, setIsExpanded] = useState(defaultExpanded)
+
+     // 设置变化时自动折叠
+     const handlePageSizeChange = (size: number) => {
+       onPageSizeChange(size)
+       setTimeout(() => setIsExpanded(false), 1000)
+     }
+
+     return (
+       <div className="border rounded-lg bg-card">
+         {/* 折叠触发器 */}
+         <div 
+           className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50"
+           onClick={() => setIsExpanded(!isExpanded)}
+         >
+           <div className="flex items-center gap-3">
+             <Settings className="h-4 w-4 text-muted-foreground" />
+             <div>
+               <span className="text-sm font-medium">表格设置</span>
+               <div className="text-xs text-muted-foreground">
+                 {isExpanded ? "点击收起设置面板" : "自定义表格显示和性能参数"}
+               </div>
+             </div>
+           </div>
+           
+           {/* 状态预览 */}
+           {!isExpanded && (
+             <div className="flex items-center gap-2 text-xs text-muted-foreground">
+               <span>{pageSize}条/页</span>
+               <span>•</span>
+               <span>{tableHeight}px高</span>
+             </div>
+           )}
+         </div>
+
+         {/* 可折叠内容 */}
+         {isExpanded && (
+           <div className="border-t bg-muted/20 p-4">
+             {/* 设置内容 */}
+           </div>
+         )}
+       </div>
+     )
+   }
+   ```
+
+5. **用户体验优化**：
+   - 提供性能提示和使用建议
+   - 使用渐变动画增强交互体验
+   - 合理的颜色对比和视觉层次
+   - 响应式设计适配不同屏幕尺寸
+
+6. **应用场景**：
+   - 表格显示设置
+   - 筛选条件面板
+   - 高级搜索选项
+   - 批量操作配置
+   - 导入导出设置
+
+### 12. 虚拟化表格规范
+
+BYSS 学校管理系统使用虚拟化表格技术处理大量数据，确保在数据量达到数千甚至数万条时仍能保持流畅的用户体验。
+
+#### 虚拟化表格核心组件
+
+##### VirtualTable 基础组件
+
+```typescript
+// components/ui/virtual-table.tsx
+import { useMemo } from 'react'
+import { FixedSizeList as List } from 'react-window'
+
+export interface VirtualTableColumn<T> {
+  key: string
+  title: string
+  width: number | 'auto'  // 支持自动宽度
+  minWidth?: number       // 最小宽度
+  render?: (value: any, record: T, index: number) => React.ReactNode
+  className?: string
+}
+
+export interface VirtualTableProps<T> {
+  data: T[]
+  columns: VirtualTableColumn<T>[]
+  height: number
+  itemHeight: number
+  onRowClick?: (record: T, index: number) => void
+  emptyText?: string
+}
+
+export function VirtualTable<T>({ 
+  data, 
+  columns, 
+  height, 
+  itemHeight, 
+  onRowClick,
+  emptyText = "暂无数据"
+}: VirtualTableProps<T>) {
+  // 虚拟化表格实现
+  // 所有内容默认居中对齐
+  // 支持自适应列宽和响应式设计
+  // 详细实现请参考项目中的 virtual-table.tsx
+}
+
+// 表头和行内容的居中对齐样式
+const headerCellClass = "px-4 py-3 text-center flex items-center justify-center"
+const bodyCellClass = "px-4 py-2 text-center flex items-center justify-center"
+```
+
+##### SimpleVirtualStudentTable 业务组件
+
+```typescript
+// components/shared/SimpleVirtualStudentTable.tsx
+import { SimpleVirtualStudentTable } from "@/components/shared/SimpleVirtualStudentTable"
+
+interface SimpleVirtualStudentTableProps {
+  students: StudentDetailView[]
+  onEdit?: (student: StudentDetailView) => void
+  onDelete?: (student: StudentDetailView) => void
+  onViewDetail?: (student: StudentDetailView) => void
+  height?: number
+}
+
+export function SimpleVirtualStudentTable({ 
+  students, 
+  onEdit, 
+  onDelete, 
+  onViewDetail,
+  height = 500 
+}: SimpleVirtualStudentTableProps) {
+  // 高性能学生表格实现
+  // 使用虚拟化技术，支持大量数据流畅渲染
+}
+```
+
+#### 虚拟化表格使用规范
+
+1. **数据量考虑**：
+   - 当数据量 > 100 条时，优先使用虚拟化表格
+   - 传统表格适用于 < 50 条数据的场景
+   - 虚拟化表格支持数万条数据的流畅渲染
+
+2. **性能优化原则**：
+   - 仅渲染可见行，大幅减少 DOM 元素
+   - 使用 `react-window` 库进行虚拟化
+   - 合理设置 `itemHeight` 避免滚动抖动
+
+3. **组件选择指南**：
+   ```typescript
+   // 大量数据场景 - 使用虚拟化表格
+   <SimpleVirtualStudentTable 
+     students={students}
+     height={500}
+     onViewDetail={handleViewDetail}
+   />
+   
+   // 少量数据场景 - 可选择传统表格
+   <StudentTable 
+     students={students.slice(0, 20)}
+   />
+   ```
+
+4. **样式和布局规范**：
+   - **居中对齐**：所有表格内容（包括标题和数据）默认居中显示
+   - **自适应宽度**：支持固定宽度和自动宽度（`'auto'`）两种模式
+   - **响应式设计**：容器始终占满父元素宽度（`w-full`）
+   - **水平滚动**：列数过多时自动启用水平滚动
+
+5. **最佳实践**：
+   - 固定表格高度以确保虚拟化效果
+   - 提供性能指示器让用户了解虚拟化状态
+   - 结合分页减少单页数据量
+   - 支持搜索和筛选功能
+   - 使用 `minWidth` 确保重要列的最小可读宽度
+
+#### 学生管理页面实现示例
+
+```typescript
+// pages/students/StudentManagement.tsx
+import { SimpleVirtualStudentTable } from "@/components/shared/SimpleVirtualStudentTable"
+import { StudentDetailModal } from "@/components/shared/StudentDetailModal"
+
+export default function StudentManagement() {
+  const [students, setStudents] = useState<StudentDetailView[]>([])
+  const [selectedStudent, setSelectedStudent] = useState<StudentDetailView | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+
+  const handleViewDetail = (student: StudentDetailView) => {
+    setSelectedStudent(student)
+    setIsModalOpen(true)
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* 页面标题 */}
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="flex items-center space-x-2 mb-2">
+            <h2 className="text-3xl font-bold tracking-tight">学生管理</h2>
+            <div className="flex items-center space-x-1 px-2 py-1 bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-full text-xs">
+              <span>🚀</span>
+              <span>虚拟化加速</span>
+            </div>
+          </div>
+          <p className="text-muted-foreground">高性能虚拟化表格，管理学校学生信息和档案</p>
+        </div>
+      </div>
+
+      {/* 虚拟化学生表格 */}
+      <SimpleVirtualStudentTable 
+        students={students}
+        onEdit={handleEditStudent}
+        onDelete={handleDeleteStudent}
+        onViewDetail={handleViewDetail}
+        height={500}
+      />
+
+      {/* 学生详情弹窗 */}
+      <StudentDetailModal
+        student={selectedStudent}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onEdit={handleEditStudent}
+        onDelete={handleDeleteStudent}
+      />
+    </div>
+  )
+}
+```
+
+#### 组件清理规范
+
+1. **已移除的组件**：
+   - `VirtualStudentTable.tsx` - 存在类型错误，已替换为 SimpleVirtualStudentTable
+   - `VirtualStudentManagement.tsx` - 性能测试页面，已删除
+   - `StudentTable.tsx` - 传统表格组件，已完全替换为虚拟化表格
+
+2. **当前推荐组件**：
+   - `SimpleVirtualStudentTable.tsx` - 主要的虚拟化学生表格（唯一推荐）
+
+3. **组件迁移指南**：
+   ```typescript
+   // 旧的用法（已弃用）
+   import { VirtualStudentTable } from "@/components/shared/VirtualStudentTable"
+   import { StudentTable } from "@/components/shared/StudentTable"
+   
+   // 新的用法（推荐）
+   import { SimpleVirtualStudentTable } from "@/components/shared/SimpleVirtualStudentTable"
+   ```
+
+#### 性能监控
+
+1. **虚拟化效果验证**：
+   - 检查 DOM 元素数量是否合理（应远少于数据总量）
+   - 滚动性能应保持流畅（60fps）
+   - 内存使用应保持稳定
+
+2. **性能指示器**：
+   ```typescript
+   <div className="flex items-center space-x-2">
+     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+     <span className="text-muted-foreground">
+       虚拟化渲染 - {students.length.toLocaleString()} 条记录
+     </span>
+   </div>
+   ```
+
+### 12. 构建配置
+
+```typescript
+// vite.config.ts
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react-swc'
+import path from 'path'
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+  server: {
+    port: 3000,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      }
+    }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          charts: ['recharts'],
+          ui: ['lucide-react', 'zustand'],
+        }
+      }
+    }
+  }
+})
+```
+
+### 13. 导出模板规范
+#### 导出模板的文件名称规范
+1. 导出模板的文件名称应为中文名称，如：学生导入模板.csv
+#### 导出模板的文件内容规范
+1. 导出模板的文件内容应为中文表头，如：学号,姓名,性别,班级,状态,身份证号,市学籍号,国学籍号,出生日期,家庭住址
+
+---
+最后更新: 2025-01-03  
+维护者: BYSS 前端团队
+
+## 更新日志
+
+### v2.4.0 (2025-01-03) - 侧边栏下拉菜单规范
+- 新增侧边栏下拉菜单设计规范（第2章组件开发规范）
+- 定义标准的下拉菜单动画效果：300ms 展开动画 + 200ms 箭头旋转
+- 提供完整的实现代码模板和最佳实践指南
+- 统一下拉菜单的视觉层次和交互体验
+- 建立智能状态管理和自动展开机制
+
+### v2.3.0 (2025-01-03) - 页面设计优化和可折叠组件规范
+- 新增页面设计规范（第1章），明确页面标题优化原则
+- 添加可折叠组件设计规范（第11章），提供设置面板最佳实践
+- 创建 CollapsibleTableSettings 组件，支持智能自动折叠
+- 优化学生管理页面布局，移除冗余的页面标题装饰
+- 统一设置面板的交互体验和视觉设计
+
+### v2.2.0 (2025-01-03) - 表格居中对齐设计规范
+- 统一表格内容居中对齐，包括标题和数据
+- 优化虚拟化表格的视觉呈现效果
+- 更新表格组件设计规范和样式指南
+- 完善自适应宽度和响应式设计文档
+
+### v2.1.0 (2025-01-03)
+- 新增虚拟化表格规范（第12章）
+- 添加 SimpleVirtualStudentTable 组件使用指南
+- 更新项目结构，增加虚拟化相关组件说明
+- 清理已弃用组件，制定组件迁移指南
+- 提供性能优化和监控最佳实践
+
+### v2.0.0 (2025-01-03)
+- 新增完整的主题系统规范（第7章）
+- 简化样式规范，移除重复的配色配置
+- 更新依赖版本和构建配置
+- 优化项目结构说明

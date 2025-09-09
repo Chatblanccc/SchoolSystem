@@ -1,0 +1,45 @@
+# BYSS School Management System - Backend requirements
+
+# Runtime (Django + DRF)
+Django>=4.2,<5.0
+djangorestframework>=3.14,<3.15
+django-filter>=24.1,<25.0
+django-environ>=0.11,<1.0
+django-cors-headers>=4.4,<5.0
+
+# Auth (JWT)
+djangorestframework-simplejwt>=5.3,<6.0
+
+# API Docs (OpenAPI 3)
+drf-spectacular[sidecar]>=0.27,<0.28
+
+# Database - MySQL
+mysqlclient>=2.2,<3.0
+
+# Caching / Redis
+redis>=5.0,<6.0
+django-redis>=5.4,<6.0
+
+# Async tasks
+celery[redis]>=5.3,<6.0
+
+# Monitoring / APM
+sentry-sdk>=2.0,<3.0
+
+# Dev tools
+django-debug-toolbar>=4.4,<5.0
+
+# Lint / Format / Type / Test
+black>=24.8,<25.0
+isort>=5.13,<6.0
+flake8>=7.1,<8.0
+mypy>=1.10,<2.0
+pytest>=8.3,<9.0
+pytest-django>=4.8,<5.0
+coverage>=7.6,<8.0
+django-stubs>=4.2,<5.0
+
+# Production WSGI (Linux/Unix only)
+gunicorn>=22.0,<23.0; sys_platform != "win32"
+
+

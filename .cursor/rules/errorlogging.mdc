@@ -1,0 +1,327 @@
+---
+description: |-
+  BYSS - 错误记录与约定（持续更新）
+  主题：班级创建 400（Bad Request）问题复盘与规范
+globs:
+  - backend/apps/schools/**/*.py
+  - frontend/src/services/classService.ts
+  - frontend/src/pages/classes/ClassManagement.tsx
+alwaysApply: false
+---
+
+# 事件：/api/v1/classes/ 新增 400（Bad Request）
+
+## 现象
+- 前端 POST /api/v1/classes/ 返回 400，控制台输出：createClass error { success: false, error: {...}, timestamp: ... }
+
+## 根因
+- 字段 `grade` 的传参与后端期望不一致：
+  - 后端模型 `Class.grade` 为外键，默认期望 `grade`（UUID/PK）
+  - 前端表单初期传的是年级名称字符串，未被后端识别，触发校验失败
+
+## 修复与规范
+1) 后端容错与统一返回
+   - 序列化器：`ClassDetailSerializer`
+     - 增加 `grade_name_input`（write_only），允许按年级名创建/关联
+     - 显式声明 `grade` 为可选外键字段
+     - `create/update`：若未提供 `grade` 但提供了 `grade_name_input`，则 `get_or_create(Grade)` 后赋值给 `grade`
+     - `validate`：创建时必须提供 `grade` 或 `grade_name_input`
+   - 视图：`ClassViewSet.create/update`
+     - 若收到 `grade` 为字符串（年级名），自动转为 `grade_name_input`
+     - 成功响应统一为：`{ success: true, data: {...} }`
+
+2) 前端入参与错误可观测性
+   - `classService.createClass`：传 `grade_name_input`（由表单选的年级名）
+   - 捕获错误并打印 `error.response.data`，便于定位 `error.details`
+   - 表单校验：名称/编码必填；年级必选；容量为正整数
+
+## 最终状态
+- 新增班级已正常：填写 年级名称 → 后端自动创建/关联 `Grade`，返回统一成功响应
+
+## 约定与示例
+- 前端 → 后端（创建）
+  ```json
+  {
+    "code": "2025-01-01",
+    "name": "一年级1班",
+    "grade_name_input": "一年级",
+    "head_teacher_name": "李老师",
+    "capacity": 50,
+    "status": "在读",
+    "remark": ""
+  }
+  ```
+
+- 后端成功响应
+  ```json
+  { "success": true, "data": { "id": "...", "code": "...", "name": "...", "grade_name": "一年级", ... } }
+  ```
+
+- 后端错误响应（统一）
+  ```json
+  {
+    "success": false,
+    "error": { "code": "VALIDATION_ERROR", "message": "数据验证失败", "details": {"grade":["grade 或 grade_name_input 必填"]} },
+    "timestamp": "ISO-8601"
+  }
+  ```
+
+## 检查清单（新增类似接口时务必对齐）
+- [ ] 输入字段同时支持外键ID与语义化名称（如 *_name_input）
+- [ ] 成功/错误响应统一包装，便于前端解析
+- [ ] 序列化器 validate 里提供明确的字段级错误信息
+- [ ] 前端 service 捕获并打印 error.response.data
+- [ ] 表单端进行必要的前置校验
+
+---
+
+## 事件：/api/v1/classes/import/ 导入 400（INVALID_FILE: 文件解码失败）
+
+### 现象
+- 前端上传 CSV 后返回 400：
+  ```json
+  {
+    "success": false,
+    "error": { "code": "INVALID_FILE", "message": "文件解码失败，应为UTF-8" },
+    "timestamp": "..."
+  }
+  ```
+
+### 根因
+- 实际上传的 CSV 多为 Excel 导出（GBK/GB18030/cp936），而后端仅按 `utf-8-sig` 解码 → 解码失败。
+- 同时存在中文表头（如“编码/名称/年级/班主任/容量/状态/备注”），原实现未做映射。
+
+### 修复与规范
+- 后端导入接口增强（`ClassViewSet.import_classes`）：
+  - 自动编码回退：依次尝试 `utf-8-sig` → `utf-8` → `gbk` → `gb18030` → `cp936`。
+  - 表头兼容映射：
+    - code|编码 → code
+    - name|名称 → name
+    - grade|grade_name|年级 → grade_name
+    - head_teacher_name|headTeacherName|班主任|班主任名称 → head_teacher_name
+    - capacity|容量 → capacity（int，默认 50）
+    - status|状态 → status（默认为“在读”）
+    - remark|备注 → remark
+  - 容错：空行/缺列跳过；容量解析失败回退 50。
+
+- 前端 `ClassImportModal`：保留 CSV 上传；提供模板下载按钮及字段说明。
+
+### 建议与示例
+- 推荐使用 UTF-8 或 GBK 保存 CSV。
+- 模板首行示例：
+  ```text
+  code,name,grade,head_teacher_name,capacity,status,remark
+  2025-01-01,一年级1班,一年级,李老师,50,在读,
+  ```
+
+### 检查清单（导入类接口）
+- [ ] 文件解码：包含常见编码的回退（utf-8, utf-8-sig, gbk/gb18030/cp936）
+- [ ] 表头兼容：中英同义字段映射
+- [ ] 数值容错：容量等字段健壮解析
+- [ ] 失败提示：返回统一错误结构并明确失败原因
+
+---
+
+## 事件：/api/v1/classes/export/ 导出 406（Not Acceptable）
+
+### 现象
+- 前端拉取导出接口返回 406，网络返回：
+  ```json
+  { "success": false, "error": { "code": "not_acceptable", "message": "无法满足Accept HTTP头的请求。" }, "timestamp": "..." }
+  ```
+
+### 根因
+- 前端强制设置 `Accept: text/csv`，而 DRF 的内容协商未配置 CSV Renderer，导致 406。
+- 后端导出使用了 DRF `Response`，走渲染器协商路径。
+
+### 修复与规范
+- 后端导出：改用 `django.http.HttpResponse` 直接返回 CSV 字符串，绕过内容协商；设置：
+  - `Content-Type: text/csv; charset=utf-8`
+  - `Content-Disposition: attachment; filename="classes.csv"`
+- 前端导出：去掉强制 `Accept` 头，使用 `fetch(url)` 获取 `blob` 并触发下载；文件名建议 `classes_时间戳.csv`。
+
+### 检查清单（导出类接口）
+- [ ] 后端使用 `HttpResponse`/流式响应并设置正确 `Content-Type` 与 `Content-Disposition`
+- [ ] 如需支持内容协商，另行注册 CSV Renderer；未注册时不要强制 `Accept: text/csv`
+- [ ] 前端以 `blob` 下载并正确释放 `ObjectURL`
+
+---
+
+## 事件：虚拟化表格选择列联动异常（全选/单选显示不正常）
+
+### 现象
+- 表头“全选”勾选后，部分行未同步；或行勾选后表头未显示半选状态。
+- 不同屏幕宽度下，复选框列对齐异常。
+
+### 根因
+- 选择列宽度使用百分比，导致在容器宽变动时布局抖动。
+- 列定义未依赖选中集，React 未触发重渲染；表头半选状态未通过 `indeterminate` 驱动。
+
+### 修复与规范
+- 将选择列宽度改为固定 48px，避免对齐问题。
+- 列 `title` 支持 ReactNode，使表头可渲染“全选”复选框。
+- 使用 `ref.indeterminate` 控制半选；`columns` 的 useMemo 依赖 `selectedIds/isAllSelected/classes`，保证状态变化时重渲染。
+- 使用 `onChange` 更新选中集，`stopPropagation()` 避免触发行点击。
+
+### 检查清单（选择列）
+- [ ] 固定最小宽度（如 48px），统一对齐
+- [ ] 表头复选框设置 `checked` 与 `indeterminate`
+- [ ] 行复选框 `checked` 来源于选中集
+- [ ] useMemo 依赖包含选中集与数据源
+- [ ] 事件使用 `onChange` 并阻止冒泡
+
+---
+
+## 事件：/api/v1/students/ 列表与班级列表 500（代理连通性/后端未启动）
+
+### 现象
+- 前端 GET `/api/v1/students/?page=1&page_size=20`、`/api/v1/classes/?page=1&page_size=200` 返回 500，Network 中 `response` 为空或 `chromewebdata`，怀疑代理失败或后端未运行。
+
+### 根因
+- Vite 代理 `/api` → `http://localhost:8000`（见 `frontend/vite.config.ts`），但后端未监听 8000 或被关闭。
+- 本地 shell 测试发现 8000 未监听；使用 Django Client 调用内部路由返回 200，说明视图本身无异常。
+
+### 修复与规范
+- 启动后端：`backend` 目录执行 `myenv/Scripts/python.exe manage.py runserver 127.0.0.1:8000 --noreload`。
+- 确认 8000 可达：`iwr http://127.0.0.1:8000/api/v1/classes/?page=1&page_size=200` 返回 200。
+- 保持 Vite 代理不变；若端口冲突，统一修改代理与 runserver 端口。
+
+### 检查清单
+- [ ] 后端 8000 端口监听正常
+- [ ] 代理 `vite.config.ts` 指向后端正确
+- [ ] curl/iwr 自测接口 200
+
+---
+
+## 事件：/api/v1/students/ 创建 400（字段名不匹配）
+
+### 现象
+- 前端创建学生 400；后端返回 `{"studentId":["该字段是必填项。"]}`。
+
+### 根因
+- 后端序列化器采用前端风格字段（`studentId/birthDate/idCardNumber/...`）。
+- 前端最初以后端风格字段（`student_id/birth_date/id_card/...`）提交，导致校验失败。
+
+### 修复与规范
+- 前端 `studentService.createStudent/updateStudent` 统一使用前端字段名：
+  - `studentId, birthDate, idCardNumber, guangzhouStudentId, nationalStudentId, homeAddress`
+  - 班级使用 `class_id`（或兼容 `class_name_input`）
+- 后端用 Django Client 实测 POST 正常 201。
+
+### 示例
+```ts
+await studentService.createStudent({
+  studentId: '202501002', name: '测试', gender: '男', status: '在校', classId: '<uuid>'
+})
+```
+
+### 检查清单
+- [ ] 前端字段命名与后端序列化器一致
+- [ ] `class_id` 或 `class_name_input` 至少一项
+- [ ] 400 时在控制台打印 `error.response.data`
+
+---
+
+## 事件：学生新增班级下拉无法选择（列表 500/空）
+
+### 现象
+- 打开新增学生弹窗，班级下拉为空；控制台班级接口 500。
+
+### 根因
+- 同上为后端未启动或代理未连通；或分页参数不当。
+
+### 修复与规范
+- 弹窗打开时请求 `/api/v1/classes/?page=1&page_size=200`；确保后端运行。
+- 前端表单提交改为 `class_id`，不再用班级名称字符串。
+
+### 检查清单
+- [ ] 弹窗开启时加载班级成功（200）
+- [ ] 下拉选项使用 `id` 作为 value，`name` 作为 label
+- [ ] 提交 payload 含 `class_id`
+
+---
+
+## 事件：学生详情弹窗未展示数据库详情
+
+### 现象
+- 点击行只展示列表字段，部分详情字段为空。
+
+### 根因
+- 列表数据为简化视图，未包含全部详情字段。
+
+### 修复与规范
+- 打开弹窗后追加请求 `GET /api/v1/students/{id}/` 回填完整详情。
+- 失败时保持已展示的最小信息，并在控制台告警。
+
+### 检查清单
+- [ ] 行点击后立即显示基本信息
+- [ ] 详情接口返回后刷新弹窗内容
+
+---
+
+## 事件：学生删除确认弹窗内容不完整
+
+### 现象
+- 删除弹窗未显示姓名/学号；批量时无数量提示。
+
+### 修复与规范
+- 单删：描述显示“学生「姓名（学号）」”。
+- 批量：描述显示“确定要删除当前 X 名学生吗？”。
+- 代码位置：`pages/students/StudentManagement.tsx`（`toDeleteNames` 与 `ConfirmDialog.description`）。
+
+### 检查清单
+- [ ] 单删展示姓名+学号
+- [ ] 批量展示数量
+- [ ] 取消/确认均能正确刷新列表
+
+---
+
+# 事件：/api/v1/courses/ 列表 teacher_name/class_name 为 null（未建立关联）
+
+### 现象
+- 课程列表接口返回（统一成功响应）中，`teacher_name` 与 `class_name` 为 `null`：
+  ```json
+  {
+    "success": true,
+    "data": {
+      "results": [{
+        "id": "...",
+        "code": "一年级",
+        "name": "一年级语文",
+        "category": "必修",
+        "weekly_hours": 7,
+        "status": "启用",
+        "teacher_name": null,
+        "class_name": null
+      }],
+      "pagination": {"page":1,"page_size":20,"total_pages":1,"total_count":1}
+    }
+  }
+  ```
+
+### 根因
+- 课程模型 `Course` 本身不含教师/班级字段；需通过 `teachers.TeachingAssignment` 关联。
+- 历史数据或初期创建未携带 `teacher_id/class_id`，导致未创建任课关联，序列化器无法取到 `teacher_name/class_name`。
+
+### 修复与规范
+1) 后端
+   - `TeachingAssignment` 增加可选外键 `course`，便于从课程反向获取任课信息。
+   - `CourseDetailSerializer`：
+     - 新增 `teacher_id/class_id` 写入字段；支持 `teacher_name_input/class_name_input` 兜底匹配。
+     - `create/update`：若提供教师或班级信息，则创建/更新 `TeachingAssignment`（`subject=course.name`, `weekly_hours=course.weekly_hours`）。
+   - `CourseListSerializer/DetailSerializer`：增加只读字段 `teacher_name/class_name`，从首条关联中读取并返回。
+
+2) 前端
+   - `courseService.createCourseOffering` 提交 `teacher_id/class_id`，并兼容传递 `teacher_name_input/class_name_input`。
+   - `CourseFormModal` 在选择下拉时记录 `teacherName/className`，提交时一并传递。
+   - 表格列为空时显示 "-" 作为兜底，避免空白。
+
+### 最终状态
+- 新增或更新课程后，列表与详情均能稳定返回并显示 `teacher_name/class_name`；历史无关联的课程需补数据或重新保存一次。
+
+### 检查清单
+- [ ] 数据库已应用 `TeachingAssignment.course` 外键迁移
+- [ ] 创建/更新课程时携带 `teacher_id/class_id` 或名称兜底
+- [ ] 列表响应包含 `teacher_name/class_name`
+- [ ] 前端表格对空值做兜底显示
+
