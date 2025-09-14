@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Layout } from '@/components/layout/Layout'
+import Login from '@/pages/auth/Login'
+import { authService } from '@/services/authService'
 import Dashboard from '@/pages/dashboard/Dashboard'
 import StudentManagement from '@/pages/students/StudentManagement'
 import ClassManagement from '@/pages/classes/ClassManagement'
@@ -10,10 +12,14 @@ import NewStudentEnrollment from '@/pages/enrollment/NewStudentEnrollment'
 import StudentChanges from '@/pages/students/StudentChanges'
 
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
+import UserManagement from '@/pages/users/UserManagement'
+import { useAuthInfoStore } from '@/stores/authInfo'
+import { Toaster } from '@/components/ui/toast'
 
-type Page = 'dashboard' | 'students' | 'classes' | 'teachers' | 'courses' | 'schedule' | 'grades' | 'analytics' | 'studentStatus' | 'newStudent' | 'studentTransfer' | 'graduationQuery' | 'settings' 
+type Page = 'dashboard' | 'students' | 'classes' | 'teachers' | 'courses' | 'schedule' | 'grades' | 'analytics' | 'studentStatus' | 'newStudent' | 'studentTransfer' | 'graduationQuery' | 'settings' | 'users'
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard')
+  const { isAdmin, setIsAdmin } = useAuthInfoStore()
 
   const renderPage = () => {
     switch (currentPage) {
@@ -41,6 +47,8 @@ function App() {
             </div>
           </div>
         )
+      case 'users':
+        return <UserManagement />
       case 'newStudent':
         return <NewStudentEnrollment />
       case 'studentTransfer':
@@ -59,11 +67,51 @@ function App() {
     }
   }
 
+  const [userLoaded, setUserLoaded] = useState(false)
+  const rawToken = localStorage.getItem('access_token')
+  const hasValidToken = !!rawToken && rawToken !== 'undefined' && rawToken !== 'null' && rawToken.includes('.')
+  const isAuthenticated = hasValidToken
+  const isLoginRoute = window.location.pathname.startsWith('/login')
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      // 清理无效 token，确保进入登录页
+      if (rawToken && !hasValidToken) {
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('refresh_token')
+      }
+      setUserLoaded(true)
+      return
+    }
+    ;(async () => {
+      const user = await authService.getCurrentUser()
+      if (!user) {
+        // token 已失效或网络异常时，回到登录页
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('refresh_token')
+        window.location.href = '/login'
+        return
+      }
+      setIsAdmin(!!(user as any)?.is_staff || !!(user as any)?.is_superuser)
+      setUserLoaded(true)
+    })()
+  }, [isAuthenticated, hasValidToken, rawToken])
+
+  if (!isAuthenticated && !isLoginRoute) {
+    // 未登录时强制跳转到登录页
+    window.history.replaceState(null, '', '/login')
+  }
+
   return (
     <ThemeProvider>
-      <Layout onNavigate={setCurrentPage} currentPage={currentPage}>
-        {renderPage()}
-      </Layout>
+      {(!isAuthenticated || isLoginRoute) ? (
+        <Login />
+      ) : (
+        <Layout onNavigate={setCurrentPage} currentPage={currentPage} isAdmin={isAdmin}>
+          {userLoaded ? renderPage() : null}
+        </Layout>
+      )}
+      <Toaster />
     </ThemeProvider>
   )
 }

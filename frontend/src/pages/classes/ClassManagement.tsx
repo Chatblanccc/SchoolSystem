@@ -212,6 +212,8 @@ export default function ClassManagement() {
           onViewStudents={handleViewStudents}
           onAssignHeadTeacher={handleAssignHeadTeacher}
           height={tableHeight}
+          canEdit={true}
+          canDelete={true}
         />
       )}
 

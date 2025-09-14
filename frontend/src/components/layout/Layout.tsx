@@ -5,12 +5,13 @@ import { TabBar } from "@/components/layout/TabBar"
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary"
 import { useTabStore } from "@/stores/tabStore"
 
-type Page = 'dashboard' | 'students' | 'classes' | 'teachers' | 'courses' | 'schedule' | 'grades' | 'analytics' | 'studentStatus' | 'newStudent' | 'studentTransfer' | 'graduationQuery' | 'settings'
+type Page = 'dashboard' | 'students' | 'classes' | 'teachers' | 'courses' | 'schedule' | 'grades' | 'analytics' | 'studentStatus' | 'newStudent' | 'studentTransfer' | 'graduationQuery' | 'settings' | 'users'
 
 interface LayoutProps {
   children: ReactNode
   onNavigate?: (page: Page) => void
   currentPage?: Page
+  isAdmin?: boolean
 }
 
 // 页面标题映射
@@ -27,10 +28,11 @@ const pageTitles: Record<Page, string> = {
   newStudent: '新生入学',
   studentTransfer: '异动办理',
   graduationQuery: '毕业查询',
-  settings: '系统设置'
+  settings: '系统设置',
+  users: '用户管理'
 }
 
-export function Layout({ children, onNavigate, currentPage = 'dashboard' }: LayoutProps) {
+export function Layout({ children, onNavigate, currentPage = 'dashboard', isAdmin = false }: LayoutProps) {
   const { tabs, activeTabId, addTab, removeTab, setActiveTab } = useTabStore()
 
   // 同步标签激活状态到路由：当关闭当前激活标签后，自动跳转到新的激活标签
@@ -70,7 +72,7 @@ export function Layout({ children, onNavigate, currentPage = 'dashboard' }: Layo
     <div className="min-h-screen bg-background">
       <Header />
       <div className="flex">
-        <Sidebar onNavigate={handleSidebarNavigate} currentPage={currentPage} />
+        <Sidebar onNavigate={handleSidebarNavigate} currentPage={currentPage} isAdmin={isAdmin} />
         <div className="flex-1 flex flex-col mt-16 ml-64">
           <ErrorBoundary fallback={
             <div className="h-10 bg-muted/20 border-b flex items-center px-4">

@@ -13,6 +13,8 @@ interface SimpleVirtualClassTableProps {
   onViewStudents?: (classItem: ClassItem) => void
   onAssignHeadTeacher?: (classItem: ClassItem) => void
   height?: number
+  canEdit?: boolean
+  canDelete?: boolean
 }
 
 function getStatusVariant(status: ClassStatus): "default" | "secondary" | "destructive" | "outline" | "success" | "warning" | "info" {
@@ -35,7 +37,9 @@ export function SimpleVirtualClassTable({
   onViewDetail,
   onViewStudents,
   onAssignHeadTeacher,
-  height = 500
+  height = 500,
+  canEdit = true,
+  canDelete = true
 }: SimpleVirtualClassTableProps) {
   const { createColumn } = useVirtualTableColumns<ClassItem>()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -147,28 +151,32 @@ export function SimpleVirtualClassTable({
           >
             <UsersIcon className="w-4 h-4" />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0"
-            onClick={(e) => { e.stopPropagation(); onEdit?.(record) }}
-            title="编辑"
-          >
-            <Edit className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-            onClick={(e) => { e.stopPropagation(); onDelete?.(record) }}
-            title="删除"
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
+          {canEdit && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={(e) => { e.stopPropagation(); onEdit?.(record) }}
+              title="编辑"
+            >
+              <Edit className="w-4 h-4" />
+            </Button>
+          )}
+          {canDelete && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+              onClick={(e) => { e.stopPropagation(); onDelete?.(record) }}
+              title="删除"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
         </div>
       )
     })
-  ], [createColumn, onEdit, onDelete, onViewDetail, onViewStudents, selectedIds, isAllSelected, classes])
+  ], [createColumn, onEdit, onDelete, onViewDetail, onViewStudents, selectedIds, isAllSelected, classes, canEdit, canDelete])
 
   if (classes.length === 0) {
     return (

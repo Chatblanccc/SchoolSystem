@@ -17,11 +17,12 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-type Page = 'dashboard' | 'students' | 'classes' | 'teachers' | 'courses' | 'schedule' | 'grades' | 'analytics' | 'studentStatus' | 'newStudent' | 'studentTransfer' | 'graduationQuery' | 'settings'
+type Page = 'dashboard' | 'students' | 'classes' | 'teachers' | 'courses' | 'schedule' | 'grades' | 'analytics' | 'studentStatus' | 'newStudent' | 'studentTransfer' | 'graduationQuery' | 'settings' | 'users'
 
 interface SidebarProps {
   onNavigate?: (page: Page) => void
   currentPage?: Page
+  isAdmin?: boolean
 }
 
 // 菜单项分组：学籍管理前后
@@ -53,12 +54,13 @@ const gradeItems = [
   { icon: BarChart, label: "成绩分析", page: "analytics" as Page },
 ]
 
-export function Sidebar({ onNavigate, currentPage = 'dashboard' }: SidebarProps) {
+export function Sidebar({ onNavigate, currentPage = 'dashboard', isAdmin = false }: SidebarProps) {
   const [isStudentStatusExpanded, setIsStudentStatusExpanded] = useState(false)
   const [isCoursesExpanded, setIsCoursesExpanded] = useState(false)
   const [isGradesExpanded, setIsGradesExpanded] = useState(false)
   
   const handleNavigation = (page: Page) => {
+    if (!isAdmin && (page === 'users' || page === 'settings')) return
     onNavigate?.(page)
   }
 
@@ -168,7 +170,9 @@ export function Sidebar({ onNavigate, currentPage = 'dashboard' }: SidebarProps)
                 )}
               >
                 <div className="ml-4 border-l border-border pl-4 space-y-1">
-                  {studentStatusItems.map((item) => {
+                  {studentStatusItems
+                    .filter(item => isAdmin || item.page !== 'studentTransfer')
+                    .map((item) => {
                     const Icon = item.icon
                     const isSubActive = currentPage === item.page
                     return (
@@ -324,23 +328,41 @@ export function Sidebar({ onNavigate, currentPage = 'dashboard' }: SidebarProps)
             </div>
           </li>
         </ul>
-        {/* 底部固定：系统设置 */}
+        {/* 底部固定：系统设置（普通用户隐藏 用户管理 和 系统设置） */}
         <div className="mt-auto">
           <ul className="space-y-2">
-            <li>
-              <button
-                onClick={() => handleNavigation('settings')}
-                className={cn(
-                  "flex items-center space-x-3 px-4 py-2.5 rounded-lg transition-colors w-full text-left relative",
-                  currentPage === 'settings'
-                    ? "bg-primary text-primary-foreground"
-                    : "hover:bg-accent"
-                )}
-              >
-                <Settings className="h-5 w-5" />
-                <span className="font-medium flex-1">系统设置</span>
-              </button>
-            </li>
+            {isAdmin && (
+              <li>
+                <button
+                  onClick={() => handleNavigation('users')}
+                  className={cn(
+                    "flex items-center space-x-3 px-4 py-2.5 rounded-lg transition-colors w-full text-left relative",
+                    currentPage === 'users'
+                      ? "bg-primary text-primary-foreground"
+                      : "hover:bg-accent"
+                  )}
+                >
+                  <Users className="h-5 w-5" />
+                  <span className="font-medium flex-1">用户管理</span>
+                </button>
+              </li>
+            )}
+            {isAdmin && (
+              <li>
+                <button
+                  onClick={() => handleNavigation('settings')}
+                  className={cn(
+                    "flex items-center space-x-3 px-4 py-2.5 rounded-lg transition-colors w-full text-left relative",
+                    currentPage === 'settings'
+                      ? "bg-primary text-primary-foreground"
+                      : "hover:bg-accent"
+                  )}
+                >
+                  <Settings className="h-5 w-5" />
+                  <span className="font-medium flex-1">系统设置</span>
+                </button>
+              </li>
+            )}
           </ul>
         </div>
       </nav>

@@ -310,6 +310,8 @@ export default function StudentManagement() {
           onDelete={handleDeleteStudent}
           onViewDetail={handleViewDetail}
           height={tableHeight}
+          canEdit={true}
+          canDelete={true}
         />
       )}
 

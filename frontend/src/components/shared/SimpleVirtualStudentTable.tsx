@@ -11,6 +11,8 @@ interface SimpleVirtualStudentTableProps {
   onDelete?: (student: StudentDetailView) => void
   onViewDetail?: (student: StudentDetailView) => void
   height?: number
+  canEdit?: boolean
+  canDelete?: boolean
 }
 
 // 获取状态对应的 Badge 样式
@@ -36,7 +38,9 @@ export function SimpleVirtualStudentTable({
   onEdit, 
   onDelete, 
   onViewDetail,
-  height = 500 
+  height = 500,
+  canEdit = true,
+  canDelete = true,
 }: SimpleVirtualStudentTableProps) {
   const { createColumn } = useVirtualTableColumns<StudentDetailView>()
 
@@ -129,34 +133,38 @@ export function SimpleVirtualStudentTable({
           >
             <Eye className="w-4 h-4" />
           </Button>
-          <Button 
-            variant="ghost" 
-            size="sm"
-            className="h-8 w-8 p-0 flex items-center justify-center"
-            onClick={(e) => {
-              e.stopPropagation()
-              onEdit?.(record)
-            }}
-            title="编辑"
-          >
-            <Edit className="w-4 h-4" />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center justify-center"
-            onClick={(e) => {
-              e.stopPropagation()
-              onDelete?.(record)
-            }}
-            title="删除"
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
+          {canEdit && (
+            <Button 
+              variant="ghost" 
+              size="sm"
+              className="h-8 w-8 p-0 flex items-center justify-center"
+              onClick={(e) => {
+                e.stopPropagation()
+                onEdit?.(record)
+              }}
+              title="编辑"
+            >
+              <Edit className="w-4 h-4" />
+            </Button>
+          )}
+          {canDelete && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center justify-center"
+              onClick={(e) => {
+                e.stopPropagation()
+                onDelete?.(record)
+              }}
+              title="删除"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
         </div>
       )
     })
-  ], [createColumn, students, selectedIds, isAllSelected, onEdit, onDelete, onViewDetail])
+  ], [createColumn, students, selectedIds, isAllSelected, onEdit, onDelete, onViewDetail, canEdit, canDelete])
 
   if (students.length === 0) {
     return (

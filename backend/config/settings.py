@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "django_filters",
     "corsheaders",
     "drf_spectacular",
+    "rest_framework_simplejwt",
     # Local apps
     "apps.common",
     "apps.schools",
@@ -50,6 +51,7 @@ INSTALLED_APPS = [
     "apps.teachers",
     "apps.timetable",
     "apps.changes",
+    "apps.users",
 ]
 
 MIDDLEWARE = [
@@ -109,6 +111,9 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 20,
     "EXCEPTION_HANDLER": "apps.common.exceptions.byss_exception_handler",
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
 }
 
 SPECTACULAR_SETTINGS = {
@@ -116,6 +121,17 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "中小学一体化学校管理系统 API 文档",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
+}
+
+# SimpleJWT 配置
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": False,
+    "BLACKLIST_AFTER_ROTATION": False,
+    "UPDATE_LAST_LOGIN": False,
 }
 
 CORS_ALLOW_ALL_ORIGINS = True
