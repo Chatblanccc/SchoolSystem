@@ -27,6 +27,8 @@ export default function TeacherManagement() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [detailOpen, setDetailOpen] = useState(false)
   const [detailTarget, setDetailTarget] = useState<TeacherItem | null>(null)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editTarget, setEditTarget] = useState<TeacherItem | null>(null)
 
   const loadTeachers = async () => {
     try {
@@ -82,6 +84,7 @@ export default function TeacherManagement() {
           teachers={teachers} 
           height={tableHeight} 
           onAssignAsHeadTeacher={(t) => { setAssignTarget(t); setAssignOpen(true) }}
+          onEdit={(t) => { setEditTarget(t); setEditOpen(true) }}
           onViewDetail={async (t) => {
             setDetailOpen(true)
             setDetailTarget(t)
@@ -165,8 +168,47 @@ export default function TeacherManagement() {
         isOpen={detailOpen}
         teacher={detailTarget}
         onClose={() => { setDetailOpen(false); setDetailTarget(null) }}
-        onEdit={() => alert('编辑教师（可后续补充）')}
+        onEdit={(t) => { setDetailOpen(false); setEditTarget(t); setEditOpen(true) }}
         onDelete={() => alert('删除教师（可后续补充）')}
+      />
+
+      {/* 编辑教师弹窗 */}
+      <TeacherFormModal
+        isOpen={editOpen}
+        title="编辑教师"
+        defaultValues={editTarget ? {
+          teacherId: editTarget.teacherId,
+          name: editTarget.name,
+          gender: editTarget.gender,
+          phone: editTarget.phone,
+          email: (editTarget as any).email || '',
+          idCard: (editTarget as any).idCard || (editTarget as any).id_card || '',
+          employmentStatus: editTarget.employmentStatus,
+          employmentType: editTarget.employmentType,
+          remark: editTarget.remark || '',
+        } : undefined}
+        onClose={() => { setEditOpen(false); setEditTarget(null) }}
+        onSubmit={async (values) => {
+          if (!editTarget) return
+          try {
+            await teacherService.updateTeacher(editTarget.id, {
+              teacherId: values.teacherId,
+              name: values.name,
+              gender: values.gender,
+              phone: values.phone,
+              email: values.email || '',
+              idCard: values.idCard,
+              employmentStatus: values.employmentStatus,
+              employmentType: values.employmentType,
+              remark: values.remark || '',
+            })
+            setEditOpen(false)
+            setEditTarget(null)
+            await loadTeachers()
+          } catch (e) {
+            alert('更新失败，请检查表单信息或稍后重试')
+          }
+        }}
       />
     </div>
   )

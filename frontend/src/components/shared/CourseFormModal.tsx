@@ -32,9 +32,10 @@ interface CourseFormModalProps {
   onClose: () => void
   onSubmit: (values: CourseFormValues) => Promise<void> | void
   submitting?: boolean
+  requireAssignment?: boolean
 }
 
-export function CourseFormModal({ isOpen, title = '新增开课', defaultValues, onClose, onSubmit, submitting }: CourseFormModalProps) {
+export function CourseFormModal({ isOpen, title = '新增开课', defaultValues, onClose, onSubmit, submitting, requireAssignment = true }: CourseFormModalProps) {
   const [values, setValues] = useState<CourseFormValues>({
     courseCode: '',
     courseName: '',
@@ -68,6 +69,24 @@ export function CourseFormModal({ isOpen, title = '新增开课', defaultValues,
         ])
         setTeacherOptions(teachersRes.teachers)
         setClassOptions(classesRes.classes)
+        // 根据名称尝试回填 teacherId/classId（用于编辑场景）
+        setValues(prev => {
+          let nextTeacherId = prev.teacherId
+          let nextTeacherName = prev.teacherName
+          if (!nextTeacherId && (prev.teacherName || defaultValues?.teacherName)) {
+            const targetName = (prev.teacherName || defaultValues?.teacherName || '').trim()
+            const t = teachersRes.teachers.find(t => t.name === targetName)
+            if (t) { nextTeacherId = t.id; nextTeacherName = t.name }
+          }
+          let nextClassId = prev.classId
+          let nextClassName = prev.className
+          if (!nextClassId && (prev.className || defaultValues?.className)) {
+            const targetName = (prev.className || defaultValues?.className || '').trim()
+            const c = classesRes.classes.find(c => c.name === targetName)
+            if (c) { nextClassId = c.id; nextClassName = c.name }
+          }
+          return { ...prev, teacherId: nextTeacherId, teacherName: nextTeacherName, classId: nextClassId, className: nextClassName }
+        })
       } catch (e) {
         console.error('加载教师/班级选项失败', e)
       } finally {
@@ -83,8 +102,10 @@ export function CourseFormModal({ isOpen, title = '新增开课', defaultValues,
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!values.courseCode || !values.courseName) { alert('请填写课程编码与名称'); return }
-    if (!values.teacherId) { alert('请选择授课老师'); return }
-    if (!values.classId) { alert('请选择班级'); return }
+    if (requireAssignment) {
+      if (!values.teacherId) { alert('请选择授课老师'); return }
+      if (!values.classId) { alert('请选择班级'); return }
+    }
     await onSubmit(values)
   }
 

@@ -3,7 +3,7 @@ from apps.common.models import BaseModel
 
 
 class Course(BaseModel):
-    code = models.CharField(max_length=64, unique=True, verbose_name="课程学段")
+    code = models.CharField(max_length=64, verbose_name="课程学段")
     name = models.CharField(max_length=128, verbose_name="课程名称")
     category = models.CharField(max_length=16, choices=[("必修", "必修"), ("选修", "选修")], default="必修")
     weekly_hours = models.PositiveIntegerField(default=1, verbose_name="周课时")

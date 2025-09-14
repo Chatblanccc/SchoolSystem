@@ -22,7 +22,7 @@ function mapDtoToStudent(dto: any): StudentDetailView {
 
 export const studentService = {
   async getStudents(params: StudentQueryParams = {}): Promise<PaginatedStudents> {
-    const { page = 1, pageSize = 20, search = "", grade = "", className = "", status } = params
+    const { page = 1, pageSize = 20, search = "", grade = "", className = "", status, ordering, includeTransferred } = params
     const { data } = await axios.get("/api/v1/students/", {
       params: {
         page,
@@ -31,6 +31,8 @@ export const studentService = {
         grade: grade || undefined,
         className: className || undefined,
         status: status || undefined,
+        ordering: ordering || undefined,
+        include_transferred: includeTransferred || undefined,
       },
     })
     const payload = data?.data ?? data
@@ -104,12 +106,13 @@ export const studentService = {
     return data?.data ?? data
   },
 
-  async exportStudents(params: { search?: string; grade?: string; className?: string; status?: string }) {
+  async exportStudents(params: { search?: string; grade?: string; className?: string; status?: string; includeTransferred?: boolean }) {
     const q = new URLSearchParams()
     if (params.search) q.set("search", params.search)
     if (params.grade) q.set("grade", params.grade)
     if (params.className) q.set("className", params.className)
     if (params.status) q.set("status", String(params.status))
+    if (params.includeTransferred) q.set("include_transferred", "true")
     const url = `/api/v1/students/export/?${q.toString()}`
     const res = await fetch(url)
     if (!res.ok) {

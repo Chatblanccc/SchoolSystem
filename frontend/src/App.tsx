@@ -5,6 +5,9 @@ import StudentManagement from '@/pages/students/StudentManagement'
 import ClassManagement from '@/pages/classes/ClassManagement'
 import TeacherManagement from '@/pages/teachers/TeacherManagement'
 import CourseManagement from '@/pages/courses/CourseManagement'
+import Timetable from '@/pages/courses/Timetable'
+import NewStudentEnrollment from '@/pages/enrollment/NewStudentEnrollment'
+import StudentChanges from '@/pages/students/StudentChanges'
 
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
 
@@ -25,6 +28,7 @@ function App() {
       case 'courses':
         return <CourseManagement />
       case 'schedule':
+        return <Timetable />
       case 'grades':
       case 'analytics':
       case 'studentStatus':
@@ -38,23 +42,9 @@ function App() {
           </div>
         )
       case 'newStudent':
-        return (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold mb-2">新生入学</h2>
-              <p className="text-muted-foreground">新生入学功能正在开发中，敬请期待</p>
-            </div>
-          </div>
-        )
+        return <NewStudentEnrollment />
       case 'studentTransfer':
-        return (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold mb-2">异动办理</h2>
-              <p className="text-muted-foreground">学生异动办理功能正在开发中，敬请期待</p>
-            </div>
-          </div>
-        )
+        return <StudentChanges />
       case 'graduationQuery':
         return (
           <div className="flex items-center justify-center h-64">

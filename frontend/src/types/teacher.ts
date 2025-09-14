@@ -47,6 +47,18 @@ export interface TeacherCreateInput {
   remark?: string
 }
 
+export interface TeacherUpdateInput {
+  teacherId?: string
+  name?: string
+  gender?: '男' | '女'
+  phone?: string
+  email?: string
+  idCard?: string
+  employmentStatus?: EmploymentStatus
+  employmentType?: EmploymentType
+  remark?: string
+}
+
 export interface TeacherAssignmentItem {
   id: string
   classId?: string

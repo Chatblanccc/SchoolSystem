@@ -28,6 +28,7 @@ sentry-sdk>=2.0,<3.0
 
 # Dev tools
 django-debug-toolbar>=4.4,<5.0
+openpyxl>=3.1,<4.0
 
 # Lint / Format / Type / Test
 black>=24.8,<25.0

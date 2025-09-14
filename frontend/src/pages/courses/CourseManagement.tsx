@@ -7,6 +7,8 @@ import { CompactTableSettings } from '@/components/shared/CompactTableSettings'
 import { Pagination } from '@/components/shared/Pagination'
 import { SimpleVirtualCourseTable } from '@/components/shared/SimpleVirtualCourseTable'
 import { CourseFormModal } from '@/components/shared/CourseFormModal'
+import { CourseDetailModal } from '@/components/shared/CourseDetailModal'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { CourseImportModal } from '@/components/shared/CourseImportModal'
 import { courseService } from '@/services/courseService'
 import type { CourseOfferingItem, CourseQueryParams, PaginatedCourseOfferings } from '@/types/course'
@@ -20,6 +22,10 @@ export default function CourseManagement() {
   const [query, setQuery] = useState<CourseQueryParams>({ page: 1, pageSize: 20, search: '', grade: '', className: '', teacherId: '', status: undefined })
   const [addOpen, setAddOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
+  const [detailOpen, setDetailOpen] = useState(false)
+  const [editing, setEditing] = useState<CourseOfferingItem | null>(null)
+  const [deleting, setDeleting] = useState<CourseOfferingItem | null>(null)
+  const [current, setCurrent] = useState<CourseOfferingItem | null>(null)
 
   const loadData = async () => {
     try {
@@ -118,9 +124,9 @@ export default function CourseManagement() {
         <SimpleVirtualCourseTable
           offerings={offerings}
           height={tableHeight}
-          onViewDetail={(o) => alert(`查看 ${o.courseName}`)}
-          onEdit={(o) => alert(`编辑 ${o.courseName}`)}
-          onDelete={(o) => alert(`删除 ${o.courseName}`)}
+          onViewDetail={(o) => { setCurrent(o); setDetailOpen(true) }}
+          onEdit={(o) => { setEditing(o) }}
+          onDelete={(o) => { setDeleting(o) }}
         />
       )}
 
@@ -161,8 +167,102 @@ export default function CourseManagement() {
             }))
             setAddOpen(false)
             loadData()
-          } catch (e) {
-            alert('创建失败，请检查表单信息或稍后重试')
+          } catch (e: any) {
+            const err = e?.response?.data?.error
+            const baseMsg = err?.message || e?.message || '创建失败，请检查表单信息或稍后重试'
+            let detailsMsg = ''
+            if (err?.details && typeof err.details === 'object') {
+              try {
+                const lines: string[] = []
+                Object.entries(err.details).forEach(([k, v]) => {
+                  if (Array.isArray(v)) lines.push(`${k}: ${v.join('、')}`)
+                  else if (v) lines.push(`${k}: ${String(v)}`)
+                })
+                if (lines.length > 0) detailsMsg = `\n详情：${lines.slice(0, 8).join('\n')}`
+              } catch {}
+            }
+            alert(`${baseMsg}${detailsMsg}`)
+          }
+        }}
+      />
+
+      {/* 查看课程详情 */}
+      <CourseDetailModal
+        course={current}
+        isOpen={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        onEdit={(o) => { setDetailOpen(false); setEditing(o) }}
+        onDelete={(o) => { setDetailOpen(false); setDeleting(o) }}
+      />
+
+      {/* 编辑课程 */}
+      <CourseFormModal
+        isOpen={!!editing}
+        title="编辑课程"
+        requireAssignment={false}
+        defaultValues={editing ? {
+          courseCode: editing.courseCode,
+          courseName: editing.courseName,
+          category: (editing.category as any) || '必修',
+          weeklyHours: editing.weeklyHours || 1,
+          teacherId: editing.teacherId,
+          teacherName: editing.teacherName,
+          className: editing.className,
+          status: editing.status,
+          remark: ''
+        } : undefined}
+        onClose={() => setEditing(null)}
+        onSubmit={async (values) => {
+          if (!editing) return
+          try {
+            await courseService.updateCourseOffering(editing.id, {
+              courseCode: values.courseCode,
+              courseName: values.courseName,
+              category: values.category,
+              weeklyHours: values.weeklyHours,
+              status: values.status,
+              remark: values.remark,
+              teacherId: values.teacherId,
+              classId: values.classId,
+              teacherName: values.teacherName,
+              className: values.className,
+            })
+            setEditing(null)
+            loadData()
+          } catch (e: any) {
+            const err = e?.response?.data?.error
+            const baseMsg = err?.message || e?.message || '更新失败，请稍后重试'
+            let detailsMsg = ''
+            if (err?.details && typeof err.details === 'object') {
+              try {
+                const lines: string[] = []
+                Object.entries(err.details).forEach(([k, v]) => {
+                  if (Array.isArray(v)) lines.push(`${k}: ${v.join('、')}`)
+                  else if (v) lines.push(`${k}: ${String(v)}`)
+                })
+                if (lines.length > 0) detailsMsg = `\n详情：${lines.slice(0, 8).join('\n')}`
+              } catch {}
+            }
+            alert(`${baseMsg}${detailsMsg}`)
+          }
+        }}
+      />
+
+      {/* 删除确认 */}
+      <ConfirmDialog
+        isOpen={!!deleting}
+        title="确认删除"
+        description={deleting ? `确定要删除课程「${deleting.courseName}」吗？此操作不可撤销。` : ''}
+        onCancel={() => setDeleting(null)}
+        onConfirm={async () => {
+          if (!deleting) return
+          try {
+            await courseService.deleteCourseOffering(deleting.id)
+            setDeleting(null)
+            loadData()
+          } catch (e: any) {
+            const err = e?.response?.data?.error
+            alert(err?.message || e?.message || '删除失败，请稍后重试')
           }
         }}
       />

@@ -45,6 +45,8 @@ export interface StudentQueryParams {
   grade?: string       // 年级筛选
   className?: string   // 班级筛选
   status?: StudentStatus // 状态筛选
+  ordering?: string    // 排序字段
+  includeTransferred?: boolean // 是否包含已转出学生
 }
 
 // 分页响应

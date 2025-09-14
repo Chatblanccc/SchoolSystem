@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { TeacherItem, TeacherQueryParams, PaginatedTeachers, TeacherCreateInput, TeacherAssignmentItem } from '@/types/teacher'
+import type { TeacherItem, TeacherQueryParams, PaginatedTeachers, TeacherCreateInput, TeacherUpdateInput, TeacherAssignmentItem } from '@/types/teacher'
 
 function mapDtoToTeacherItem(dto: any): TeacherItem {
   return {
@@ -87,6 +87,27 @@ export const teacherService = {
     const { data } = await axios.post('/api/v1/teachers/', payload)
     const body = data?.data ?? data
     return mapDtoToTeacherItem(body)
+  },
+
+  async updateTeacher(id: string, input: TeacherUpdateInput): Promise<TeacherItem> {
+    const payload: any = {}
+    if (input.teacherId !== undefined) payload.teacher_id = input.teacherId
+    if (input.name !== undefined) payload.name = input.name
+    if (input.gender !== undefined) payload.gender = input.gender
+    if (input.phone !== undefined) payload.phone = input.phone
+    if (input.email !== undefined) payload.email = input.email
+    if (input.idCard !== undefined) payload.id_card = input.idCard
+    if (input.employmentStatus !== undefined) payload.employment_status = input.employmentStatus
+    if (input.employmentType !== undefined) payload.employment_type = input.employmentType
+    if (input.remark !== undefined) payload.remark = input.remark
+
+    const { data } = await axios.patch(`/api/v1/teachers/${id}/`, payload)
+    const body = data?.data ?? data
+    return mapDtoToTeacherItem(body)
+  },
+
+  async deleteTeacher(id: string): Promise<void> {
+    await axios.delete(`/api/v1/teachers/${id}/`)
   },
 
   async importTeachersByItems(items: any[]): Promise<{ created: number; updated: number }> {

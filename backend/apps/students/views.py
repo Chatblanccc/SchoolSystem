@@ -28,6 +28,10 @@ class StudentViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
 
+        # 默认不显示已转出的学生，除非明确指定 include_transferred=true
+        if not request.query_params.get("include_transferred"):
+            queryset = queryset.exclude(status="转学")
+
         # 兼容前端过渡期参数：grade（名称模糊）、className（名称匹配）
         grade_name = request.query_params.get("grade")
         if grade_name:
@@ -161,6 +165,10 @@ class StudentViewSet(viewsets.ModelViewSet):
     def export_students(self, request):
         # 中文表头导出，增加证件与学籍号等字段
         qs = self.filter_queryset(self.get_queryset())
+        
+        # 默认不导出已转出的学生，除非明确指定
+        if not request.query_params.get("include_transferred"):
+            qs = qs.exclude(status="转学")
         import csv, io
         output = io.StringIO()
         writer = csv.writer(output)

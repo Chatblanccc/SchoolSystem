@@ -44,6 +44,7 @@ export default function StudentManagement() {
     grade: '',
     className: '',
     status: undefined,
+    includeTransferred: false,
   })
 
   // 加载学生数据
@@ -278,6 +279,19 @@ export default function StudentManagement() {
             <SelectItem value="休学">休学</SelectItem>
             <SelectItem value="毕业">毕业</SelectItem>
           </Select>
+          
+          {/* 显示已转出学生复选框 */}
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="w-4 h-4 rounded border-gray-300"
+              checked={queryParams.includeTransferred}
+              onChange={(e) => {
+                setQueryParams({ ...queryParams, includeTransferred: e.target.checked, page: 1 })
+              }}
+            />
+            <span>显示已转出学生</span>
+          </label>
         </div>
       </div>
 

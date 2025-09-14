@@ -83,11 +83,12 @@ export const courseService = {
       weekly_hours: input.weeklyHours ?? 1,
       status: mappedStatus ?? '启用',
       description: input.remark || '',
-      teacher_id: input.teacherId,
-      class_id: input.classId,
-      teacher_name_input: input.teacherName,
-      class_name_input: input.className
     }
+    // 仅在有值时传递，避免空字符串触发后端 UUID/blank 校验
+    if (input.teacherId) payload.teacher_id = input.teacherId
+    if (input.classId) payload.class_id = input.classId
+    if (input.teacherName) payload.teacher_name_input = input.teacherName
+    if (input.className) payload.class_name_input = input.className
     try {
       const { data } = await axios.post('/api/v1/courses/', payload)
       const body = data?.data ?? data
@@ -125,6 +126,40 @@ export const courseService = {
     a.click()
     a.remove()
     URL.revokeObjectURL(objectUrl)
+  },
+
+  async updateCourseOffering(id: string, input: {
+    courseCode?: string
+    courseName?: string
+    category?: string
+    weeklyHours?: number
+    status?: string
+    remark?: string
+    teacherId?: string
+    classId?: string
+    teacherName?: string
+    className?: string
+  }): Promise<CourseOfferingItem> {
+    const mappedStatus = input.status === '开放' ? '启用' : input.status === '关闭' || input.status === '结课' ? '停用' : input.status
+    const payload: any = {
+      ...(input.courseCode !== undefined ? { code: input.courseCode } : {}),
+      ...(input.courseName !== undefined ? { name: input.courseName } : {}),
+      ...(input.category !== undefined ? { category: input.category } : {}),
+      ...(input.weeklyHours !== undefined ? { weekly_hours: input.weeklyHours } : {}),
+      ...(input.status !== undefined ? { status: mappedStatus } : {}),
+      ...(input.remark !== undefined ? { description: input.remark || '' } : {}),
+    }
+    if (input.teacherId) payload.teacher_id = input.teacherId
+    if (input.classId) payload.class_id = input.classId
+    if (input.teacherName) payload.teacher_name_input = input.teacherName
+    if (input.className) payload.class_name_input = input.className
+    const { data } = await axios.patch(`/api/v1/courses/${id}/`, payload)
+    const body = data?.data ?? data
+    return mapDtoToOffering(body)
+  },
+
+  async deleteCourseOffering(id: string): Promise<void> {
+    await axios.delete(`/api/v1/courses/${id}/`)
   }
 }
 
