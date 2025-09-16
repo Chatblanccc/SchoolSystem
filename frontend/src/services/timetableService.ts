@@ -44,11 +44,27 @@ function normalizeLessons(payload: any): LessonItem[] {
 }
 
 export const timetableService = {
+  async getMyTimetable(params: { term: string; week: number }): Promise<LessonItem[]> {
+    const { term, week } = params
+    const { data } = await axios.get(`/api/v1/timetable/me/`, { params: { term, week } })
+    const body: TimetableResponse['data'] = (data?.data ?? data)
+    return normalizeLessons(body)
+  },
   async getTimetable(params: TimetableQuery): Promise<LessonItem[]> {
     const { view, term, week, classId, teacherId, roomId } = params
     const base = `/api/v1/timetable/${view === 'class' ? 'classes' : view === 'teacher' ? 'teachers' : 'rooms'}/`
     const id = view === 'class' ? classId : view === 'teacher' ? teacherId : roomId
-    const { data } = await axios.get(`${base}${id ?? ''}`, { params: { term, week } })
+
+    // 非法或占位 ID（如 demo-class-1）时，回退到全校课表以避免 404
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    if (!id || !UUID_RE.test(String(id))) {
+      const { data } = await axios.get(`/api/v1/timetable/school/`, { params: { term, week } })
+      const body: TimetableResponse['data'] = (data?.data ?? data)
+      return normalizeLessons(body)
+    }
+
+    // 正常以 UUID 访问具体视图，并补齐尾部斜杠
+    const { data } = await axios.get(`${base}${id}/`, { params: { term, week } })
     const body: TimetableResponse['data'] = (data?.data ?? data)
     return normalizeLessons(body)
   },
@@ -60,30 +76,60 @@ export const timetableService = {
     return normalizeLessons(body)
   },
 
-  async importTimetable(file: File, options: { term: string; mode?: 'append' | 'overwrite' }) {
-    const form = new FormData()
-    form.append('file', file)
-    form.append('term', options.term)
-    if (options.mode) form.append('mode', options.mode)
-    const { data } = await axios.post('/api/v1/timetable/import/', form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
-    return data
+  // 更新单条课次
+  async updateLesson(id: string, input: Partial<LessonItem>) {
+    const payload: any = {
+      term: input.term,
+      dayOfWeek: input.dayOfWeek,
+      startTime: input.startTime,
+      endTime: input.endTime,
+      startPeriod: input.startPeriod,
+      endPeriod: input.endPeriod,
+      weekType: input.weekType,
+      weeks: Array.isArray(input.weeks) ? input.weeks : input.weeks,
+      courseId: input.courseId,
+      courseName: input.courseName,
+      teacherId: input.teacherId,
+      teacherName: input.teacherName,
+      classId: input.classId,
+      className: input.className,
+      roomId: input.roomId,
+      roomName: input.roomName,
+      remark: input.remark,
+    }
+    const { data } = await axios.patch(`/api/v1/timetable/lessons/${id}/update/`, payload)
+    return data?.data ?? data
   },
 
-  async exportTimetable(params: { term: string; view: 'class'|'teacher'|'room'; week?: number; id?: string }) {
-    const { term, view, week, id } = params
-    const url = `/api/v1/timetable/export/?term=${encodeURIComponent(term)}&view=${view}${week ? `&week=${week}`: ''}${id ? `&id=${id}`: ''}`
-    const res = await axios.get(url, { responseType: 'blob' })
-    const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8' })
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
-    const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')
-    link.download = `课程表_${term}_${view}_${ts}.csv`
-    document.body.appendChild(link)
-    link.click()
-    URL.revokeObjectURL(link.href)
-    link.remove()
+  async createLesson(input: Partial<LessonItem> & { term: string; dayOfWeek: number; courseName: string }) {
+    // 兼容后端统一响应包装
+    const payload: any = {
+      term: input.term,
+      dayOfWeek: input.dayOfWeek,
+      startTime: input.startTime || undefined,
+      endTime: input.endTime || undefined,
+      startPeriod: input.startPeriod || undefined,
+      endPeriod: input.endPeriod || undefined,
+      weekType: input.weekType || 'all',
+      weeks: Array.isArray(input.weeks) ? input.weeks : input.weeks,
+      courseId: input.courseId,
+      courseName: input.courseName,
+      teacherId: input.teacherId,
+      teacherName: input.teacherName,
+      classId: input.classId,
+      className: input.className,
+      roomId: input.roomId,
+      roomName: input.roomName,
+      remark: input.remark,
+    }
+    const { data } = await axios.post('/api/v1/timetable/lessons/', payload)
+    return data?.data ?? data
+  },
+
+  // 删除单条课次
+  async deleteLesson(id: string) {
+    const { data } = await axios.delete(`/api/v1/timetable/lessons/${id}/delete/`)
+    return data?.data ?? data
   }
 }
 

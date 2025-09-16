@@ -4,6 +4,7 @@ from typing import List, Optional
 
 from django.db import transaction
 from django.http import HttpResponse
+from django.db.models import Q
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -239,18 +240,298 @@ class TimetableImportView(APIView):
         return Response({'success': True, 'data': {'created': created}})
 
 
+@api_view(['POST'])
+def create_lesson(request):
+    """手动创建单条课次（Lesson）。
+    支持两种外键入参：优先使用 *_id；若无则按 *_name 匹配（room 不存在则自动创建）。
+    weeks 可为字符串（如 "1-16" 或 "1,3,5"）或 number[]（将拼接为逗号分隔）。
+    weekType 支持 'odd'|'even'|'all' 或 中文 '单'|'双'。
+    """
+    data = request.data
+
+    term = (data.get('term') or '').strip()
+    day = data.get('dayOfWeek') or data.get('day_of_week')
+    course_name = (data.get('courseName') or data.get('course_name') or '').strip()
+    if not term or not str(day).strip() or not course_name:
+        return Response({
+            'success': False,
+            'error': {
+                'code': 'VALIDATION_ERROR',
+                'message': 'term、dayOfWeek、courseName 为必填',
+                'details': {
+                    'term': ['必填' if not term else None],
+                    'dayOfWeek': ['必填' if not str(day).strip() else None],
+                    'courseName': ['必填' if not course_name else None],
+                }
+            }
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    # 规范化 weekType
+    week_type_raw = (data.get('weekType') or data.get('week_type') or 'all').strip()
+    if week_type_raw in ['单', 'odd']:
+        week_type = 'odd'
+    elif week_type_raw in ['双', 'even']:
+        week_type = 'even'
+    else:
+        week_type = 'all'
+
+    # 规范化 weeks
+    weeks_val = data.get('weeks')
+    if isinstance(weeks_val, list):
+        weeks = ','.join(str(int(x)) for x in weeks_val if str(x).strip())
+    else:
+        weeks = str(weeks_val or '').strip()
+
+    # 外键优先使用 *_id
+    course = None
+    course_id = data.get('courseId') or data.get('course_id')
+    if course_id:
+        course = Course.objects.filter(pk=course_id).first()
+    elif course_name:
+        course = Course.objects.filter(name=course_name).first()
+
+    teacher = None
+    teacher_id = data.get('teacherId') or data.get('teacher_id')
+    teacher_name = (data.get('teacherName') or data.get('teacher_name') or '').strip()
+    if teacher_id:
+        teacher = Teacher.objects.filter(pk=teacher_id).first()
+        # 如果找到了教师对象，使用其名称
+        if teacher and not teacher_name:
+            teacher_name = teacher.name
+    elif teacher_name:
+        teacher = Teacher.objects.filter(name=teacher_name).first()
+
+    class_obj = None
+    class_id = data.get('classId') or data.get('class_id') or data.get('class_ref_id')
+    class_name = (data.get('className') or data.get('class_name') or '').strip()
+    if class_id:
+        class_obj = SchoolClass.objects.filter(pk=class_id).first()
+        # 如果找到了班级对象，使用其名称
+        if class_obj and not class_name:
+            class_name = class_obj.name
+    elif class_name:
+        class_obj = SchoolClass.objects.filter(name=class_name).first()
+
+    room = None
+    room_id = data.get('roomId') or data.get('room_id')
+    room_name = (data.get('roomName') or data.get('room_name') or '').strip()
+    if room_id:
+        room = Room.objects.filter(pk=room_id).first()
+        # 如果找到了教室对象，使用其名称
+        if room and not room_name:
+            room_name = room.name
+    elif room_name:
+        room = Room.objects.filter(name=room_name).first()
+        if not room:
+            room = Room.objects.create(name=room_name)
+
+    payload = {
+        'term': term,
+        'dayOfWeek': int(day),
+        'weekType': week_type,
+        'courseName': course_name,
+    }
+    # 可选字段按有值再放入，避免空字符串触发校验错误
+    start_time_val = (data.get('startTime') or data.get('start_time') or '').strip()
+    end_time_val = (data.get('endTime') or data.get('end_time') or '').strip()
+    if start_time_val:
+        payload['startTime'] = start_time_val
+    if end_time_val:
+        payload['endTime'] = end_time_val
+    start_period_val = data.get('startPeriod') or data.get('start_period')
+    end_period_val = data.get('endPeriod') or data.get('end_period')
+    if start_period_val is not None and str(start_period_val) != '':
+        payload['startPeriod'] = start_period_val
+    if end_period_val is not None and str(end_period_val) != '':
+        payload['endPeriod'] = end_period_val
+    if weeks:
+        payload['weeks'] = weeks
+    cid = str(course.id) if course else (course_id or None)
+    if cid:
+        payload['courseId'] = cid
+    tid = str(teacher.id) if teacher else (teacher_id or None)
+    if tid:
+        payload['teacherId'] = tid
+    if teacher_name:
+        payload['teacherName'] = teacher_name
+    clsid = str(class_obj.id) if class_obj else (class_id or None)
+    if clsid:
+        payload['classId'] = clsid
+    if class_name:
+        payload['className'] = class_name
+    rid = str(room.id) if room else (room_id or None)
+    if rid:
+        payload['roomId'] = rid
+    if room_name:
+        payload['roomName'] = room_name
+    remark_val = (data.get('remark') or '').strip()
+    if remark_val:
+        payload['remark'] = remark_val
+
+    # 序列化与保存
+    ser = LessonSerializer(data=payload)
+    if not ser.is_valid():
+        return Response({'success': False, 'error': {'code': 'VALIDATION_ERROR', 'message': '数据验证失败', 'details': ser.errors}}, status=status.HTTP_400_BAD_REQUEST)
+    instance = ser.save()
+    return Response({'success': True, 'data': LessonSerializer(instance).data}, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET'])
+def get_lesson(request, pk):
+    obj = Lesson.objects.filter(pk=pk).first()
+    if not obj:
+        return Response({'success': False, 'error': {'code': 'NOT_FOUND', 'message': '课程不存在'}}, status=status.HTTP_404_NOT_FOUND)
+    return Response({'success': True, 'data': LessonSerializer(obj).data})
+
+
+@api_view(['PATCH'])
+def update_lesson(request, pk):
+    obj = Lesson.objects.filter(pk=pk).first()
+    if not obj:
+        return Response({'success': False, 'error': {'code': 'NOT_FOUND', 'message': '课程不存在'}}, status=status.HTTP_404_NOT_FOUND)
+
+    data = request.data
+
+    # 预处理：weeks 数组 → 字符串
+    weeks_val = data.get('weeks')
+    if isinstance(weeks_val, list):
+        data = {**data, 'weeks': ','.join(str(int(x)) for x in weeks_val if str(x).strip())}
+
+    # 若传入 *_id，自动补齐名称字段，保持展示一致
+    course_id = data.get('courseId') or data.get('course_id')
+    if course_id:
+        course = Course.objects.filter(pk=course_id).first()
+        if course and not data.get('courseName') and not data.get('course_name'):
+            data = {**data, 'courseName': course.name}
+
+    teacher_id = data.get('teacherId') or data.get('teacher_id')
+    if teacher_id:
+        teacher = Teacher.objects.filter(pk=teacher_id).first()
+        if teacher and not data.get('teacherName') and not data.get('teacher_name'):
+            data = {**data, 'teacherName': teacher.name}
+
+    class_id = data.get('classId') or data.get('class_id') or data.get('class_ref_id')
+    if class_id:
+        cls = SchoolClass.objects.filter(pk=class_id).first()
+        if cls and not data.get('className') and not data.get('class_name'):
+            data = {**data, 'className': cls.name}
+
+    room_id = data.get('roomId') or data.get('room_id')
+    if room_id:
+        room = Room.objects.filter(pk=room_id).first()
+        if room and not data.get('roomName') and not data.get('room_name'):
+            data = {**data, 'roomName': room.name}
+
+    ser = LessonSerializer(obj, data=data, partial=True)
+    if not ser.is_valid():
+        return Response({'success': False, 'error': {'code': 'VALIDATION_ERROR', 'message': '数据验证失败', 'details': ser.errors}}, status=status.HTTP_400_BAD_REQUEST)
+    instance = ser.save()
+    return Response({'success': True, 'data': LessonSerializer(instance).data})
+
+
+@api_view(['DELETE'])
+def delete_lesson(request, pk):
+    obj = Lesson.objects.filter(pk=pk).first()
+    if not obj:
+        return Response({'success': False, 'error': {'code': 'NOT_FOUND', 'message': '课程不存在'}}, status=status.HTTP_404_NOT_FOUND)
+    obj.delete()
+    return Response({'success': True, 'data': {'deleted': True}}, status=status.HTTP_200_OK)
+
+
 def _filter_by_week(qs, week: Optional[str]):
     if not week:
         return qs
-    # weeks 字段可能为 "1-16" 或 "1,3,5"，简单包含判断
-    return qs.filter(models.Q(weeks__icontains=f',{week},') | models.Q(weeks__startswith=f'{week},') | models.Q(weeks__endswith=f',{week}') | models.Q(weeks=week))
+    # 支持以下几种 weeks 格式：
+    # - ""（空）：视为全周适用
+    # - "1,3,5"（逗号分隔）
+    # - "1-16"（范围，含端点）
+    # 为保证兼容性与正确性，这里在 Python 层做一次过滤。
+    try:
+        week_int = int(str(week).strip())
+    except Exception:
+        week_int = None
 
+    matched_ids: list = []
+    for _id, w in qs.values_list('id', 'weeks'):
+        s = (w or '').strip()
+        if s == '':
+            # 空 weeks 视为所有周次
+            matched_ids.append(_id)
+            continue
+        # 逗号列表
+        if ',' in s and '-' not in s:
+            try:
+                parts = [p.strip() for p in s.split(',') if p.strip()]
+                if str(week) in parts:
+                    matched_ids.append(_id)
+                    continue
+            except Exception:
+                pass
+        # 范围 a-b
+        if '-' in s and week_int is not None:
+            try:
+                a_str, b_str = s.split('-', 1)
+                a = int(a_str.strip())
+                b = int(b_str.strip())
+                if a <= week_int <= b:
+                    matched_ids.append(_id)
+                    continue
+            except Exception:
+                pass
+        # 兜底：完全相等
+        if s == str(week):
+            matched_ids.append(_id)
+
+    if not matched_ids:
+        return qs.none()
+    return qs.filter(id__in=matched_ids)
+
+
+def _get_user_display_name(user) -> str:
+    try:
+        name = (getattr(user, 'get_full_name', lambda: '')() or '').strip()
+    except Exception:
+        name = ''
+    if not name:
+        # 退化为 first_name + last_name 或 username
+        first = (getattr(user, 'first_name', '') or '').strip()
+        last = (getattr(user, 'last_name', '') or '').strip()
+        if first or last:
+            name = f"{first}{last}".strip()
+    if not name:
+        name = (getattr(user, 'username', '') or '').strip()
+    return name
+
+
+def _apply_user_scope(request, qs):
+    """按当前登录用户收敛可见课表范围：仅匹配教师姓名；学生不参与匹配。
+    规则：用户显示名（全名/first+last/username）与教师表的 name 完全相同 → 仅看到该姓名的课表。
+    未匹配到教师 → 不可见。
+    """
+    user = getattr(request, 'user', None)
+    if not user or not getattr(user, 'is_authenticated', False):
+        return qs.none()
+
+    # 仅按姓名匹配教师
+    display_name = _get_user_display_name(user)
+    if not display_name:
+        return qs.none()
+    try:
+        from apps.teachers.models import Teacher as T
+        t = T.objects.filter(name=display_name).first()
+    except Exception:
+        t = None
+    if not t:
+        return qs.none()
+    # 同时兼容按 teacher_id 关联与仅存储 teacher_name 的课次
+    return qs.filter(Q(teacher_id=t.id) | Q(teacher_name=display_name))
 
 @api_view(['GET'])
 def school_timetable(request):
     term = request.query_params.get('term')
     week = request.query_params.get('week')
     qs = Lesson.objects.filter(term=term)
+    qs = _apply_user_scope(request, qs)
     qs = _filter_by_week(qs, week)
     qs = qs.order_by('day_of_week','start_time','start_period')
     data = LessonSerializer(qs, many=True).data
@@ -262,6 +543,7 @@ def class_timetable(request, pk):
     term = request.query_params.get('term')
     week = request.query_params.get('week')
     qs = Lesson.objects.filter(term=term, class_ref_id=pk)
+    qs = _apply_user_scope(request, qs)
     qs = _filter_by_week(qs, week)
     qs = qs.order_by('day_of_week','start_time','start_period')
     data = LessonSerializer(qs, many=True).data
@@ -273,6 +555,7 @@ def teacher_timetable(request, pk):
     term = request.query_params.get('term')
     week = request.query_params.get('week')
     qs = Lesson.objects.filter(term=term, teacher_id=pk)
+    qs = _apply_user_scope(request, qs)
     qs = _filter_by_week(qs, week)
     qs = qs.order_by('day_of_week','start_time','start_period')
     data = LessonSerializer(qs, many=True).data
@@ -284,11 +567,63 @@ def room_timetable(request, pk):
     term = request.query_params.get('term')
     week = request.query_params.get('week')
     qs = Lesson.objects.filter(term=term, room_id=pk)
+    qs = _apply_user_scope(request, qs)
     qs = _filter_by_week(qs, week)
     qs = qs.order_by('day_of_week','start_time','start_period')
     data = LessonSerializer(qs, many=True).data
     return Response({'success': True, 'data': {'lessons': data}})
 
+
+@api_view(['GET'])
+def me_timetable(request):
+    """根据当前登录用户角色返回个性化课表：
+    - 教师用户：返回该教师的课表
+    - 学生用户：返回其当前班级的课表
+    - 管理员/其他：返回学校课表
+    需要前端携带 JWT，后端通过 request.user 判定。
+    支持查询参数：term, week
+    """
+    user = getattr(request, 'user', None)
+    term = request.query_params.get('term')
+    week = request.query_params.get('week')
+
+    # 尝试定位教师
+    teacher = None
+    try:
+        from apps.teachers.models import Teacher as T
+        teacher = T.objects.filter(phone=getattr(user, 'username', None)).first() or T.objects.filter(email=getattr(user, 'email', None)).first()
+    except Exception:
+        teacher = None
+
+    if teacher:
+        qs = Lesson.objects.filter(term=term, teacher_id=teacher.id)
+        qs = _filter_by_week(qs, week)
+        qs = qs.order_by('day_of_week','start_time','start_period')
+        return Response({'success': True, 'data': {'lessons': LessonSerializer(qs, many=True).data}})
+
+    # 尝试定位学生（按用户名=学号 或 email/phone 匹配）
+    student = None
+    try:
+        from apps.students.models import Student as S
+        student = (
+            S.objects.filter(student_id=getattr(user, 'username', None)).first()
+            or S.objects.filter(email=getattr(user, 'email', None)).first()
+            or S.objects.filter(phone=getattr(user, 'username', None)).first()
+        )
+    except Exception:
+        student = None
+
+    if student and student.current_class_id:
+        qs = Lesson.objects.filter(term=term, class_ref_id=student.current_class_id)
+        qs = _filter_by_week(qs, week)
+        qs = qs.order_by('day_of_week','start_time','start_period')
+        return Response({'success': True, 'data': {'lessons': LessonSerializer(qs, many=True).data}})
+
+    # 默认：学校课表
+    qs = Lesson.objects.filter(term=term)
+    qs = _filter_by_week(qs, week)
+    qs = qs.order_by('day_of_week','start_time','start_period')
+    return Response({'success': True, 'data': {'lessons': LessonSerializer(qs, many=True).data}})
 
 @api_view(['GET'])
 def timetable_template(request):

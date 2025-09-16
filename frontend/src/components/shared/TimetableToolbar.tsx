@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectItem } from '@/components/ui/select'
-import { Upload, Download, Calendar as CalendarIcon, Users, GraduationCap, MapPin } from 'lucide-react'
+import { Calendar as CalendarIcon, Users, GraduationCap, MapPin } from 'lucide-react'
 import type { TimetableView, WeekOption, TimetableMode } from '@/types/timetable'
 
 interface TimetableToolbarProps {
@@ -20,8 +20,7 @@ interface TimetableToolbarProps {
   onModeChange?: (mode: TimetableMode) => void
   onWeekendChange?: (show: boolean) => void
   onTargetChange: (id: string) => void
-  onImport: () => void
-  onExport: () => void
+  onCreate?: () => void
 }
 
 export function TimetableToolbar(props: TimetableToolbarProps) {
@@ -29,7 +28,7 @@ export function TimetableToolbar(props: TimetableToolbarProps) {
     term, week, view, mode = 'period', showWeekend = false, weekOptions,
     classId, teacherId, roomId,
     onTermChange, onWeekChange, onViewChange, onModeChange, onWeekendChange, onTargetChange,
-    onImport, onExport
+    onCreate
   } = props
 
   const currentTargetId = view === 'class' ? (classId || '') : view === 'teacher' ? (teacherId || '') : (roomId || '')
@@ -97,12 +96,11 @@ export function TimetableToolbar(props: TimetableToolbarProps) {
       </div>
 
       <div className="flex items-center gap-3">
-        <Button variant="outline" onClick={onImport}>
-          <Upload className="w-4 h-4 mr-2" /> 导入
-        </Button>
-        <Button variant="outline" onClick={onExport}>
-          <Download className="w-4 h-4 mr-2" /> 导出
-        </Button>
+        {onCreate && (
+          <Button onClick={onCreate}>
+            新增课程
+          </Button>
+        )}
         <Button>
           <CalendarIcon className="w-4 h-4 mr-2" /> 本周
         </Button>

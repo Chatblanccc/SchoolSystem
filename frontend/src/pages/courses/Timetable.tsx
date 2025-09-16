@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { TimetableToolbar } from '@/components/shared/TimetableToolbar'
 import { TimetableGrid } from '@/components/shared/TimetableGrid'
-import { TimetableImportModal } from '@/components/shared/TimetableImportModal'
+import { TimetableEditModal } from '@/components/shared/TimetableEditModal'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
+// 移除导入相关功能
+import { TimetableCreateModal } from '@/components/shared/TimetableCreateModal'
 import { timetableService } from '@/services/timetableService'
 import type { LessonItem, TimetableView, TimetableMode, PeriodSlot } from '@/types/timetable'
 
@@ -29,7 +32,11 @@ export default function Timetable() {
   const height = 560
   const [lessons, setLessons] = useState<LessonItem[]>([])
   const [loading, setLoading] = useState(false)
-  const [importOpen, setImportOpen] = useState(false)
+  // 移除导入状态
+  const [createOpen, setCreateOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [selectedLesson, setSelectedLesson] = useState<LessonItem | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   const query = useMemo(() => ({ term, week, view, classId: view === 'class' ? targetId : undefined, teacherId: view === 'teacher' ? targetId : undefined, roomId: view === 'room' ? targetId : undefined }), [term, week, view, targetId])
 
@@ -44,16 +51,7 @@ export default function Timetable() {
           : await timetableService.getSchoolTimetable({ term, week })
         if (!cancelled) setLessons(data)
       } catch (e) {
-        console.warn('加载课程表失败，使用示例数据回退', e)
-        if (!cancelled) {
-          const demo: LessonItem[] = [
-            { id: 'd1', term, dayOfWeek: 1, startTime: '08:00', endTime: '09:40', courseName: '语文', teacherName: '李老师', className: '一年级1班', roomName: 'A101' },
-            { id: 'd2', term, dayOfWeek: 1, startTime: '10:00', endTime: '11:40', courseName: '数学', teacherName: '王老师', className: '一年级1班', roomName: 'A101' },
-            { id: 'd3', term, dayOfWeek: 2, startTime: '14:00', endTime: '15:40', courseName: '英语', teacherName: '周老师', className: '一年级1班', roomName: 'A101' },
-            { id: 'd4', term, dayOfWeek: 3, startTime: '08:00', endTime: '09:40', courseName: '体育', teacherName: '张老师', className: '一年级1班', roomName: '操场' },
-          ]
-          setLessons(demo)
-        }
+        console.warn('加载课程表失败', e)
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -78,8 +76,8 @@ export default function Timetable() {
         onModeChange={setMode}
         onWeekendChange={setShowWeekend}
         onTargetChange={setTargetId}
-        onImport={() => setImportOpen(true)}
-        onExport={() => timetableService.exportTimetable({ term, view, week, id: targetId })}
+        // 已移除导入导出
+        onCreate={() => setCreateOpen(true)}
       />
 
       {loading ? (
@@ -90,27 +88,84 @@ export default function Timetable() {
           </div>
         </div>
       ) : (
-        <TimetableGrid lessons={lessons} height={height} mode={mode} showWeekend={showWeekend} periodSlots={schoolPeriodSlots} />
-      )}
-
-      <TimetableImportModal
-        isOpen={importOpen}
-        onClose={() => setImportOpen(false)}
-        onImported={() => {
-          setImportOpen(false)
-          ;(async () => {
-            setLoading(true)
+        <TimetableGrid
+          lessons={lessons}
+          height={height}
+          mode={mode}
+          showWeekend={showWeekend}
+          periodSlots={schoolPeriodSlots}
+          onLessonClick={(l) => { setSelectedLesson(l); setEditOpen(true) }}
+          onLessonDelete={(l) => { setSelectedLesson(l); setConfirmOpen(true) }}
+          onLessonMove={async (id, next) => {
             try {
+              await timetableService.updateLesson(id, next as any)
               const data = targetId
-                ? await timetableService.getTimetable({ term, week, view, classId: view === 'class' ? targetId : undefined, teacherId: view === 'teacher' ? targetId : undefined, roomId: view === 'room' ? targetId : undefined })
+                ? await timetableService.getTimetable(query)
                 : await timetableService.getSchoolTimetable({ term, week })
               setLessons(data)
-            } finally {
-              setLoading(false)
+            } catch (e) {
+              console.warn('移动课程失败', e)
             }
-          })()
-        }}
+          }}
+        />
+      )}
+
+      {/* 已移除导入弹窗 */}
+
+      <TimetableCreateModal
+        isOpen={createOpen}
+        onClose={() => setCreateOpen(false)}
         defaultTerm={term}
+        defaultView={view}
+        defaultTargetId={targetId}
+        onCreated={async () => {
+          setCreateOpen(false)
+          setLoading(true)
+          try {
+            const data = targetId
+              ? await timetableService.getTimetable({ term, week, view, classId: view === 'class' ? targetId : undefined, teacherId: view === 'teacher' ? targetId : undefined, roomId: view === 'room' ? targetId : undefined })
+              : await timetableService.getSchoolTimetable({ term, week })
+            setLessons(data)
+          } finally {
+            setLoading(false)
+          }
+        }}
+      />
+
+      <TimetableEditModal
+        isOpen={editOpen}
+        onClose={() => setEditOpen(false)}
+        lesson={selectedLesson}
+        periodSlots={schoolPeriodSlots}
+        onSaved={async () => {
+          setEditOpen(false)
+          const data = targetId
+            ? await timetableService.getTimetable(query)
+            : await timetableService.getSchoolTimetable({ term, week })
+          setLessons(data)
+        }}
+      />
+
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        title="删除课程"
+        description={selectedLesson ? `确定要删除「${selectedLesson.courseName}」吗？该操作不可撤销。` : ''}
+        confirmText="删除"
+        cancelText="取消"
+        danger
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={async () => {
+          if (!selectedLesson) return
+          try {
+            await timetableService.deleteLesson(selectedLesson.id)
+            const data = targetId
+              ? await timetableService.getTimetable(query)
+              : await timetableService.getSchoolTimetable({ term, week })
+            setLessons(data)
+          } finally {
+            setConfirmOpen(false)
+          }
+        }}
       />
     </div>
   )

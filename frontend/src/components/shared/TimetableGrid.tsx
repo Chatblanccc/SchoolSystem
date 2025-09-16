@@ -10,6 +10,9 @@ interface TimetableGridProps {
   mode?: TimetableMode // time | period
   showWeekend?: boolean
   periodSlots?: PeriodSlot[]
+  onLessonClick?: (lesson: LessonItem) => void
+  onLessonDelete?: (lesson: LessonItem) => void
+  onLessonMove?: (id: string, next: { dayOfWeek: number; startPeriod: number; endPeriod: number }) => void
 }
 
 const days = ['一','二','三','四','五','六','日']
@@ -19,7 +22,7 @@ function computeLayout(lessons: LessonItem[], slots?: PeriodSlot[]) {
   return computeTimeLayout(lessons, slots)
 }
 
-export function TimetableGrid({ lessons, height = 560, showNowIndicator = true, mode = 'period', showWeekend = false, periodSlots }: TimetableGridProps) {
+export function TimetableGrid({ lessons, height = 560, showNowIndicator = true, mode = 'period', showWeekend = false, periodSlots, onLessonClick, onLessonDelete, onLessonMove }: TimetableGridProps) {
   // period 模式默认节次
   const defaultSlots: PeriodSlot[] = (periodSlots && periodSlots.length > 0) ? periodSlots : [
     { no: 1, label: '第1节', startTime: '08:00', endTime: '08:45' },
@@ -83,7 +86,11 @@ export function TimetableGrid({ lessons, height = 560, showNowIndicator = true, 
 
             {/* 天列 */}
             {Array.from({ length: dayCount }).map((_, dayIdx) => (
-              <div key={dayIdx} className="relative border-r" style={{ height: height - 41 }}>
+              <div
+                key={dayIdx}
+                className="relative border-r"
+                style={{ height: height - 41 }}
+              >
                 {hours.map((h, i) => (
                   <div key={i} className="absolute left-0 right-0" style={{ top: `calc(${h.top}% - 0.5px)` }}>
                     <div className="h-px bg-border/60" />
@@ -97,12 +104,22 @@ export function TimetableGrid({ lessons, height = 560, showNowIndicator = true, 
                   return (
                     <div
                       key={l.id}
-                      className="absolute rounded-md shadow-sm border text-xs p-2 cursor-default select-none overflow-hidden"
+                      className="group absolute rounded-md shadow-sm border text-xs p-2 cursor-pointer select-none overflow-hidden"
                       style={{ top: `calc(${l.top}% + 2px)`, height: `calc(${l.height}% - 4px)`, left: `calc(${leftPercent}% + 2px)`, width: `calc(${widthPercent}% - 4px)`, backgroundColor: l.color || 'hsl(var(--primary) / 0.12)', borderColor: 'hsl(var(--primary) / 0.3)'}}
-                      title={`${l.courseName}\n${l.teacherName ?? ''} @ ${l.roomName ?? ''}\n${l.startTime}-${l.endTime}`}
+                      title={`${l.courseName}\n${l.teacherName ?? ''}${l.className ? ' • ' + l.className : ''}${l.roomName ? ' @ ' + l.roomName : ''}\n${l.startTime}-${l.endTime}`}
+                      onClick={(e) => { e.stopPropagation(); onLessonClick?.(l) }}
                     >
+                      <button
+                        className="absolute right-1 top-1 hidden group-hover:inline-flex items-center justify-center w-5 h-5 rounded bg-destructive text-destructive-foreground"
+                        onClick={(e) => { e.stopPropagation(); onLessonDelete?.(l) }}
+                        title="删除"
+                      >
+                        ×
+                      </button>
                       <div className="font-medium truncate">{l.courseName}</div>
-                      <div className="truncate text-muted-foreground">{l.teacherName || '-'} {l.roomName ? `@ ${l.roomName}` : ''}</div>
+                      <div className="truncate text-muted-foreground">
+                        {l.teacherName || '-'}{l.className ? ` • ${l.className}` : ''}{l.roomName ? ` @ ${l.roomName}` : ''}
+                      </div>
                       <div className="truncate text-muted-foreground">{l.startTime}-{l.endTime}</div>
                     </div>
                   )
@@ -126,7 +143,47 @@ export function TimetableGrid({ lessons, height = 560, showNowIndicator = true, 
             </div>
 
             {Array.from({ length: dayCount }).map((_, dayIdx) => (
-              <div key={dayIdx} className="relative border-r" style={{ height: height - 41 }}>
+              <div
+                key={dayIdx}
+                className="relative border-r"
+                style={{ height: height - 41 }}
+                onDragOver={(e) => { if (onLessonMove) { e.preventDefault() } }}
+                onDrop={(e) => {
+                  if (!onLessonMove) return
+                  try {
+                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                    const y = e.clientY - rect.top
+                    const rowHeight = (height - 41) / defaultSlots.length
+                    let idx = Math.max(0, Math.min(defaultSlots.length - 1, Math.floor(y / rowHeight)))
+                    // 调整到最近的非 break 行
+                    if (defaultSlots[idx]?.isBreak) {
+                      let up = idx - 1
+                      let down = idx + 1
+                      while (up >= 0 || down < defaultSlots.length) {
+                        if (up >= 0 && !defaultSlots[up].isBreak) { idx = up; break }
+                        if (down < defaultSlots.length && !defaultSlots[down].isBreak) { idx = down; break }
+                        up--; down++
+                      }
+                    }
+                    const dataStr = e.dataTransfer.getData('application/json')
+                    const parsed = JSON.parse(dataStr || '{}') as { id?: string; rows?: number }
+                    if (!parsed.id) return
+                    const rows = Math.max(1, Number(parsed.rows) || 1)
+                    // 计算结束节次索引，跳过 break
+                    let count = 1
+                    let endIdx = idx
+                    while (count < rows && endIdx + 1 < defaultSlots.length) {
+                      endIdx += 1
+                      if (!defaultSlots[endIdx].isBreak) count += 1
+                    }
+                    const startNo = defaultSlots[idx].no
+                    const endNo = defaultSlots[endIdx].no
+                    if (typeof startNo === 'number' && typeof endNo === 'number') {
+                      onLessonMove(parsed.id, { dayOfWeek: dayIdx + 1, startPeriod: startNo, endPeriod: endNo })
+                    }
+                  } catch {}
+                }}
+              >
                 {/* 行栅格线 */}
                 {defaultSlots.map((s) => (
                   <div key={s.no + s.label} className={cn("border-b last:border-b-0", s.isBreak && "bg-muted/30")} style={{ height: `calc(${(height - 41) / defaultSlots.length}px)` }} />
@@ -155,12 +212,27 @@ export function TimetableGrid({ lessons, height = 560, showNowIndicator = true, 
                   return (
                     <div
                       key={l.id}
-                      className="absolute rounded-md shadow-sm border text-xs p-2 cursor-default select-none overflow-hidden"
+                      className="group absolute rounded-md shadow-sm border text-xs p-2 cursor-move select-none overflow-hidden"
                       style={{ top: `${topPx}px`, height: `${blockHeight}px`, left: `calc(${leftPercent}% + 2px)`, width: `calc(${widthPercent}% - 4px)`, backgroundColor: l.color || 'hsl(var(--primary) / 0.12)', borderColor: 'hsl(var(--primary) / 0.3)'}}
-                      title={`${l.courseName}\n${l.teacherName ?? ''} @ ${l.roomName ?? ''}\n${l.startTime}-${l.endTime}`}
+                      title={`${l.courseName}\n${l.teacherName ?? ''}${l.className ? ' • ' + l.className : ''}${l.roomName ? ' @ ' + l.roomName : ''}\n第${sp+1}-${sp+rows}节`}
+                      draggable={Boolean(onLessonMove)}
+                      onDragStart={(e) => {
+                        if (!onLessonMove) return
+                        const payload = { id: l.id, rows }
+                        e.dataTransfer.setData('application/json', JSON.stringify(payload))
+                        try { e.dataTransfer.effectAllowed = 'move' } catch {}
+                      }}
+                      onClick={(e) => { e.stopPropagation(); onLessonClick?.(l) }}
                     >
+                      <button
+                        className="absolute right-1 top-1 hidden group-hover:inline-flex items-center justify-center w-5 h-5 rounded bg-destructive text-destructive-foreground"
+                        onClick={(e) => { e.stopPropagation(); onLessonDelete?.(l) }}
+                        title="删除"
+                      >
+                        ×
+                      </button>
                       <div className="font-medium truncate">{l.courseName}</div>
-                      <div className="truncate text-muted-foreground">{l.teacherName || '-'} {l.roomName ? `@ ${l.roomName}` : ''}</div>
+                      <div className="truncate text-muted-foreground">{l.teacherName || '-'}{l.className ? ` • ${l.className}` : ''}{l.roomName ? ` @ ${l.roomName}` : ''}</div>
                       <div className="truncate text-muted-foreground">第{sp+1}-{sp+rows}节</div>
                     </div>
                   )
