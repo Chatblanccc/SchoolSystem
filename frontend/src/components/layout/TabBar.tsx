@@ -1,5 +1,5 @@
 import React from "react"
-import { X, Plus, LayoutDashboard, Users, GraduationCap, BookOpen, Calendar, FileText, BarChart, Settings, UserPlus, RefreshCw, Search, Layers } from "lucide-react"
+import { X, Plus, LayoutDashboard, Users, GraduationCap, BookOpen, Calendar, FileText, BarChart, Settings, UserPlus, RefreshCw, Search, Layers, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export type TabPage = {
@@ -34,6 +34,7 @@ interface TabBarProps {
   onTabClose?: (tabId: string) => void
   onAddTab?: () => void
   maxTabs?: number
+  onClearAll?: () => void
 }
 
 export function TabBar({
@@ -42,7 +43,8 @@ export function TabBar({
   onTabClick,
   onTabClose,
   onAddTab,
-  maxTabs = 10
+  maxTabs = 10,
+  onClearAll
 }: TabBarProps) {
 
   const handleTabClose = (e: React.MouseEvent, tabId: string) => {
@@ -129,6 +131,19 @@ export function TabBar({
           )}
         </div>
       </div>
+      {/* 一键清除按钮（保留仪表盘） */}
+      {onClearAll && (
+        <div className="border-l">
+          <button
+            className="px-3 py-2 hover:bg-destructive/10 transition-colors text-destructive flex items-center gap-1"
+            onClick={onClearAll}
+            title="清除全部标签（保留仪表盘）"
+          >
+            <Trash2 className="h-4 w-4" />
+            <span className="text-sm">清除</span>
+          </button>
+        </div>
+      )}
     </div>
   )
 }

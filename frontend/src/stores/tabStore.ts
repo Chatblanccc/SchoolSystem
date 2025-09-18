@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+const MAX_TABS = 10
+
 // 简化的标签类型，不包含图标
 export type StoredTab = {
   id: string
@@ -49,15 +51,21 @@ export const useTabStore = create<TabState>()(
         const { tabs } = get()
         const exists = tabs.find(t => t.id === tab.id)
         
-        if (!exists) {
-          set({
-            tabs: [...tabs, tab],
-            activeTabId: tab.id
-          })
-        } else {
+        if (exists) {
           // 如果标签已存在，直接激活
           set({ activeTabId: tab.id })
+          return
         }
+
+        // 限制最大标签数量（含仪表盘）
+        if (tabs.length >= MAX_TABS) {
+          return
+        }
+
+        set({
+          tabs: [...tabs, tab],
+          activeTabId: tab.id
+        })
       },
       
       removeTab: (tabId) => {

@@ -33,7 +33,7 @@ const pageTitles: Record<Page, string> = {
 }
 
 export function Layout({ children, onNavigate, currentPage = 'dashboard', isAdmin = false }: LayoutProps) {
-  const { tabs, activeTabId, addTab, removeTab, setActiveTab } = useTabStore()
+  const { tabs, activeTabId, addTab, removeTab, setActiveTab, clearTabs } = useTabStore()
 
   // 同步标签激活状态到路由：当关闭当前激活标签后，自动跳转到新的激活标签
   useEffect(() => {
@@ -84,6 +84,7 @@ export function Layout({ children, onNavigate, currentPage = 'dashboard', isAdmi
               activeTabId={activeTabId || currentPage}
               onTabClick={handleTabClick}
               onTabClose={handleTabClose}
+              onClearAll={clearTabs}
             />
           </ErrorBoundary>
           <main className="flex-1 p-6">
