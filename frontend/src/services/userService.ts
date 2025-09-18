@@ -1,14 +1,17 @@
-import { api } from "@/lib/api"
+﻿import { api } from "@/lib/api"
 import type { UserItem, UserQueryParams, PaginatedUsers } from "@/types/user"
 
 function mapDtoToUser(dto: any): UserItem {
+  const rawName = dto.name ?? `${dto.first_name ?? ""}${dto.last_name ?? ""}`
+  const name = (rawName || dto.username || "").trim() || dto.username
+
   return {
     id: String(dto.id),
     username: dto.username,
     email: dto.email || "",
-    firstName: dto.first_name ?? dto.firstName,
-    lastName: dto.last_name ?? dto.lastName,
-    name: dto.name ?? (`${dto.first_name ?? ''}${dto.last_name ?? ''}` || dto.username),
+    name,
+    firstName: dto.first_name ?? dto.firstName ?? undefined,
+    lastName: dto.last_name ?? dto.lastName ?? undefined,
     isActive: dto.is_active ?? dto.isActive ?? true,
     isStaff: dto.is_staff ?? dto.isStaff ?? false,
     dateJoined: dto.date_joined ?? dto.dateJoined,
@@ -41,11 +44,10 @@ export const userService = {
   },
 
   async createUser(input: Partial<UserItem> & { password: string }): Promise<UserItem> {
-    const payload: any = {
+    const payload: Record<string, unknown> = {
       username: input.username,
       email: input.email,
-      first_name: input.firstName,
-      last_name: input.lastName,
+      name: input.name,
       is_active: input.isActive ?? true,
       is_staff: input.isStaff ?? false,
       password: input.password,
@@ -56,11 +58,10 @@ export const userService = {
   },
 
   async updateUser(id: string, input: Partial<UserItem> & { password?: string }): Promise<UserItem> {
-    const payload: any = {
+    const payload: Record<string, unknown> = {
       username: input.username,
       email: input.email,
-      first_name: input.firstName,
-      last_name: input.lastName,
+      name: input.name,
       is_active: input.isActive,
       is_staff: input.isStaff,
     }
@@ -74,5 +75,3 @@ export const userService = {
     await api.delete(`/users/${id}/`)
   },
 }
-
-

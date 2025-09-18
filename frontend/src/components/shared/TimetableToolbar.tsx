@@ -26,12 +26,9 @@ interface TimetableToolbarProps {
 export function TimetableToolbar(props: TimetableToolbarProps) {
   const {
     term, week, view, mode = 'period', showWeekend = false, weekOptions,
-    classId, teacherId, roomId,
-    onTermChange, onWeekChange, onViewChange, onModeChange, onWeekendChange, onTargetChange,
+    onTermChange, onWeekChange, onViewChange, onModeChange, onWeekendChange,
     onCreate
   } = props
-
-  const currentTargetId = view === 'class' ? (classId || '') : view === 'teacher' ? (teacherId || '') : (roomId || '')
 
   const viewOptions = useMemo(() => ([
     { value: 'class', label: '班级视图', icon: Users },
@@ -70,28 +67,6 @@ export function TimetableToolbar(props: TimetableToolbarProps) {
         <Select placeholder="周末" value={String(showWeekend)} onValueChange={(v) => onWeekendChange?.(v === 'true')} className="w-28">
           <SelectItem value="false">隐藏周末</SelectItem>
           <SelectItem value="true">显示周末</SelectItem>
-        </Select>
-        <Select placeholder={view === 'class' ? '选择班级（留空=全校）' : view === 'teacher' ? '选择教师（留空=全校）' : '选择教室（留空=全校）'} value={currentTargetId} onValueChange={(v) => onTargetChange(v)} className="w-56">
-          {/* 先提供示例占位项，后续对接后端列表 */}
-          <SelectItem value="">全校视图</SelectItem>
-          {view === 'class' && (
-            <>
-              <SelectItem value="demo-class-1">一年级1班</SelectItem>
-              <SelectItem value="demo-class-2">一年级2班</SelectItem>
-            </>
-          )}
-          {view === 'teacher' && (
-            <>
-              <SelectItem value="demo-teacher-1">李老师</SelectItem>
-              <SelectItem value="demo-teacher-2">王老师</SelectItem>
-            </>
-          )}
-          {view === 'room' && (
-            <>
-              <SelectItem value="demo-room-101">教学楼A101</SelectItem>
-              <SelectItem value="demo-room-102">教学楼A102</SelectItem>
-            </>
-          )}
         </Select>
       </div>
 

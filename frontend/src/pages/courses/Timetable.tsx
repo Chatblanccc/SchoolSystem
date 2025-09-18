@@ -25,10 +25,10 @@ export default function Timetable() {
   ]
   const [term, setTerm] = useState('2024-2025-1')
   const [week, setWeek] = useState<number>(1)
-  const [view, setView] = useState<TimetableView>('class')
+  const [view] = useState<TimetableView>('class')
   const [mode, setMode] = useState<TimetableMode>('period')
   const [showWeekend, setShowWeekend] = useState(false)
-  const [targetId, setTargetId] = useState('')
+  const [targetId] = useState('')
   const height = 560
   const [lessons, setLessons] = useState<LessonItem[]>([])
   const [loading, setLoading] = useState(false)
@@ -45,10 +45,8 @@ export default function Timetable() {
     async function load() {
       try {
         setLoading(true)
-        // 课表数据
-        const data = targetId
-          ? await timetableService.getTimetable(query)
-          : await timetableService.getSchoolTimetable({ term, week })
+        // 简化：总是加载“我的课表”，后端已实现姓名/档案兜底
+        const data = await timetableService.getMyTimetable({ term, week })
         if (!cancelled) setLessons(data)
       } catch (e) {
         console.warn('加载课程表失败', e)
@@ -72,10 +70,10 @@ export default function Timetable() {
         showWeekend={showWeekend}
         onTermChange={setTerm}
         onWeekChange={setWeek}
-        onViewChange={(v) => { setView(v); setTargetId('') }}
+        onViewChange={() => {}}
         onModeChange={setMode}
         onWeekendChange={setShowWeekend}
-        onTargetChange={setTargetId}
+        onTargetChange={() => {}}
         // 已移除导入导出
         onCreate={() => setCreateOpen(true)}
       />
@@ -99,9 +97,7 @@ export default function Timetable() {
           onLessonMove={async (id, next) => {
             try {
               await timetableService.updateLesson(id, next as any)
-              const data = targetId
-                ? await timetableService.getTimetable(query)
-                : await timetableService.getSchoolTimetable({ term, week })
+              const data = await timetableService.getMyTimetable({ term, week })
               setLessons(data)
             } catch (e) {
               console.warn('移动课程失败', e)
@@ -122,9 +118,7 @@ export default function Timetable() {
           setCreateOpen(false)
           setLoading(true)
           try {
-            const data = targetId
-              ? await timetableService.getTimetable({ term, week, view, classId: view === 'class' ? targetId : undefined, teacherId: view === 'teacher' ? targetId : undefined, roomId: view === 'room' ? targetId : undefined })
-              : await timetableService.getSchoolTimetable({ term, week })
+            const data = await timetableService.getMyTimetable({ term, week })
             setLessons(data)
           } finally {
             setLoading(false)
@@ -139,9 +133,7 @@ export default function Timetable() {
         periodSlots={schoolPeriodSlots}
         onSaved={async () => {
           setEditOpen(false)
-          const data = targetId
-            ? await timetableService.getTimetable(query)
-            : await timetableService.getSchoolTimetable({ term, week })
+          const data = await timetableService.getMyTimetable({ term, week })
           setLessons(data)
         }}
       />
@@ -158,9 +150,7 @@ export default function Timetable() {
           if (!selectedLesson) return
           try {
             await timetableService.deleteLesson(selectedLesson.id)
-            const data = targetId
-              ? await timetableService.getTimetable(query)
-              : await timetableService.getSchoolTimetable({ term, week })
+            const data = await timetableService.getMyTimetable({ term, week })
             setLessons(data)
           } finally {
             setConfirmOpen(false)

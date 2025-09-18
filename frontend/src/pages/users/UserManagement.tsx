@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react"
-import { Plus, Settings, Search } from "lucide-react"
+﻿import { useEffect, useState } from "react"
+import { Plus, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Pagination } from "@/components/shared/Pagination"
@@ -28,8 +28,8 @@ export default function UserManagement() {
       const result: PaginatedUsers = await userService.getUsers(queryParams)
       setUsers(result.users)
       setPagination(result.pagination)
-    } catch (e) {
-      console.error("加载用户失败", e)
+    } catch (error) {
+      console.error("加载用户失败", error)
     } finally {
       setLoading(false)
     }
@@ -39,18 +39,24 @@ export default function UserManagement() {
     loadUsers()
   }, [queryParams])
 
-  const handleSearch = (value: string) => setQueryParams((p) => ({ ...p, search: value, page: 1 }))
-  const handlePageChange = (page: number) => setQueryParams((p) => ({ ...p, page }))
+  const handleSearch = (value: string) => setQueryParams((params) => ({ ...params, search: value, page: 1 }))
+  const handlePageChange = (page: number) => setQueryParams((params) => ({ ...params, page }))
   const handlePageSizeChange = (size: number) => {
-    setQueryParams((p) => ({ ...p, pageSize: size, page: 1 }))
-    setPagination((pg) => ({ ...pg, pageSize: size }))
+    setQueryParams((params) => ({ ...params, pageSize: size, page: 1 }))
+    setPagination((prev) => ({ ...prev, pageSize: size }))
   }
-  const handleTableHeightChange = (h: number) => setTableHeight(h)
+  const handleTableHeightChange = (height: number) => setTableHeight(height)
   const handleRefresh = () => loadUsers()
 
   const handleAdd = () => setAddOpen(true)
-  const handleEdit = (u: UserItem) => { setEditing(u); setEditOpen(true) }
-  const handleDelete = (u: UserItem) => { setToDelete(u); setConfirmOpen(true) }
+  const handleEdit = (user: UserItem) => {
+    setEditing(user)
+    setEditOpen(true)
+  }
+  const handleDelete = (user: UserItem) => {
+    setToDelete(user)
+    setConfirmOpen(true)
+  }
 
   return (
     <div className="space-y-6">
@@ -72,16 +78,15 @@ export default function UserManagement() {
         </div>
         <div className="flex items-center gap-3">
           <Input
-            placeholder="搜索用户名/姓名/邮箱..."
+            placeholder="搜索用户名 / 姓名 / 邮箱..."
             className="w-64"
             icon={<Search className="w-4 h-4" />}
             value={queryParams.search}
-            onChange={(e) => handleSearch(e.target.value)}
+            onChange={(event) => handleSearch(event.target.value)}
           />
         </div>
       </div>
 
-      {/* 简易表格（居中） */}
       <div className="border rounded-md overflow-auto" style={{ height: tableHeight }}>
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-muted/50">
@@ -94,34 +99,44 @@ export default function UserManagement() {
                 "管理员",
                 "加入时间",
                 "操作",
-              ].map((h) => (
-                <th key={h} className="px-4 py-3 text-center">{h}</th>
+              ].map((header) => (
+                <th key={header} className="px-4 py-3 text-center">
+                  {header}
+                </th>
               ))}
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} className="text-center py-10 text-muted-foreground">加载中...</td>
+                <td colSpan={7} className="text-center py-10 text-muted-foreground">
+                  加载中...
+                </td>
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center py-10 text-muted-foreground">暂无数据</td>
+                <td colSpan={7} className="text-center py-10 text-muted-foreground">
+                  暂无数据
+                </td>
               </tr>
             ) : (
-              users.map((u) => (
-                <tr key={u.id} className="border-t hover:bg-accent/30">
-                  <td className="px-4 py-2 text-center">{u.username}</td>
-                  <td className="px-4 py-2 text-center">{u.name || `${u.firstName ?? ''}${u.lastName ?? ''}`}</td>
-                  <td className="px-4 py-2 text-center">{u.email}</td>
-                  <td className="px-4 py-2 text-center">{u.isActive ? "是" : "否"}</td>
-                  <td className="px-4 py-2 text-center">{u.isStaff ? "是" : "否"}</td>
-                  <td className="px-4 py-2 text-center">{u.dateJoined?.slice(0, 19).replace("T", " ")}</td>
+              users.map((user) => (
+                <tr key={user.id} className="border-t hover:bg-accent/30">
+                  <td className="px-4 py-2 text-center">{user.username}</td>
+                  <td className="px-4 py-2 text-center">{user.name}</td>
+                  <td className="px-4 py-2 text-center">{user.email}</td>
+                  <td className="px-4 py-2 text-center">{user.isActive ? "是" : "否"}</td>
+                  <td className="px-4 py-2 text-center">{user.isStaff ? "是" : "否"}</td>
+                  <td className="px-4 py-2 text-center">{user.dateJoined?.slice(0, 19).replace("T", " ")}</td>
                   <td className="px-4 py-2 text-center">
                     <div className="flex items-center justify-center gap-2">
-                      <button className="text-primary hover:underline" onClick={() => handleEdit(u)}>编辑</button>
+                      <button className="text-primary hover:underline" onClick={() => handleEdit(user)}>
+                        编辑
+                      </button>
                       <span className="text-muted-foreground">|</span>
-                      <button className="text-destructive hover:underline" onClick={() => handleDelete(u)}>删除</button>
+                      <button className="text-destructive hover:underline" onClick={() => handleDelete(user)}>
+                        删除
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -142,15 +157,17 @@ export default function UserManagement() {
         showPageSizeSelector={false}
       />
 
-      {/* 删除确认 */}
       <ConfirmDialog
         isOpen={confirmOpen}
         title="删除用户"
-        description={toDelete ? `确定要删除用户「${toDelete.username}」吗？该操作不可撤销。` : ''}
+        description={toDelete ? `确定要删除用户「${toDelete.username}」吗？该操作不可撤销。` : ""}
         confirmText="删除"
         cancelText="取消"
         danger
-        onCancel={() => { setConfirmOpen(false); setToDelete(null) }}
+        onCancel={() => {
+          setConfirmOpen(false)
+          setToDelete(null)
+        }}
         onConfirm={async () => {
           if (!toDelete) return
           try {
@@ -158,13 +175,12 @@ export default function UserManagement() {
             setConfirmOpen(false)
             setToDelete(null)
             loadUsers()
-          } catch (e) {
+          } catch (error) {
             alert("删除失败，请重试")
           }
         }}
       />
 
-      {/* 新增用户弹窗 */}
       <UserFormModal
         isOpen={addOpen}
         onClose={() => setAddOpen(false)}
@@ -173,44 +189,43 @@ export default function UserManagement() {
             await userService.createUser({
               username: values.username,
               email: values.email,
-              firstName: values.firstName,
-              lastName: values.lastName,
+              name: values.name,
               isActive: values.isActive,
               isStaff: values.isStaff,
               password: values.password || "",
             })
             setAddOpen(false)
             loadUsers()
-          } catch (e) {
-            const msg = (e as any)?.response?.data?.error?.message || '创建失败，请重试'
-            const details = (e as any)?.response?.data?.error?.details
-            console.error('createUser error', (e as any)?.response?.data || e)
-            alert(`${msg}${details ? `\n` + JSON.stringify(details) : ''}`)
+          } catch (error: any) {
+            const message = error?.response?.data?.error?.message || "创建失败，请重试"
+            const details = error?.response?.data?.error?.details
+            console.error("createUser error", error?.response?.data || error)
+            alert(`${message}${details ? `\n${JSON.stringify(details)}` : ""}`)
           }
         }}
       />
 
-      {/* 编辑用户弹窗 */}
       <UserFormModal
         isOpen={editOpen}
         title="编辑用户"
         defaultValues={editing ? {
           username: editing.username,
           email: editing.email,
-          firstName: editing.firstName,
-          lastName: editing.lastName,
+          name: editing.name,
           isActive: editing.isActive,
           isStaff: editing.isStaff,
         } : undefined}
-        onClose={() => { setEditOpen(false); setEditing(null) }}
+        onClose={() => {
+          setEditOpen(false)
+          setEditing(null)
+        }}
         onSubmit={async (values) => {
           if (!editing) return
           try {
             await userService.updateUser(editing.id, {
               username: values.username,
               email: values.email,
-              firstName: values.firstName,
-              lastName: values.lastName,
+              name: values.name,
               isActive: values.isActive,
               isStaff: values.isStaff,
               password: values.password || undefined,
@@ -218,16 +233,14 @@ export default function UserManagement() {
             setEditOpen(false)
             setEditing(null)
             loadUsers()
-          } catch (e) {
-            const msg = (e as any)?.response?.data?.error?.message || '更新失败，请重试'
-            const details = (e as any)?.response?.data?.error?.details
-            console.error('updateUser error', (e as any)?.response?.data || e)
-            alert(`${msg}${details ? `\n` + JSON.stringify(details) : ''}`)
+          } catch (error: any) {
+            const message = error?.response?.data?.error?.message || "更新失败，请重试"
+            const details = error?.response?.data?.error?.details
+            console.error("updateUser error", error?.response?.data || error)
+            alert(`${message}${details ? `\n${JSON.stringify(details)}` : ""}`)
           }
         }}
       />
     </div>
   )
 }
-
-

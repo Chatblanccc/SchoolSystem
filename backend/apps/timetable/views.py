@@ -504,9 +504,10 @@ def _get_user_display_name(user) -> str:
 
 
 def _apply_user_scope(request, qs):
-    """按当前登录用户收敛可见课表范围：仅匹配教师姓名；学生不参与匹配。
-    规则：用户显示名（全名/first+last/username）与教师表的 name 完全相同 → 仅看到该姓名的课表。
-    未匹配到教师 → 不可见。
+    """按当前登录用户收敛可见课表范围：优先匹配教师档案，其次按 teacher_name 兜底；学生不参与匹配。
+    规则：
+    - 用户显示名（全名/first+last/username）与教师表的 name 完全相同 → 可见 teacher_id 或 teacher_name 等于该姓名的课次。
+    - 若未匹配到教师档案 → 仍按 teacher_name 与显示名完全相同进行兜底匹配。
     """
     user = getattr(request, 'user', None)
     if not user or not getattr(user, 'is_authenticated', False):
@@ -522,7 +523,8 @@ def _apply_user_scope(request, qs):
     except Exception:
         t = None
     if not t:
-        return qs.none()
+        # 无教师档案时，按 teacher_name 精确匹配兜底，兼容仅存储姓名的课次
+        return qs.filter(teacher_name=display_name)
     # 同时兼容按 teacher_id 关联与仅存储 teacher_name 的课次
     return qs.filter(Q(teacher_id=t.id) | Q(teacher_name=display_name))
 
@@ -587,7 +589,15 @@ def me_timetable(request):
     term = request.query_params.get('term')
     week = request.query_params.get('week')
 
-    # 尝试定位教师
+    # 优先：按与学校视图一致的用户可见范围（教师姓名）过滤
+    qs0 = Lesson.objects.filter(term=term)
+    qs0 = _apply_user_scope(request, qs0)
+    qs0 = _filter_by_week(qs0, week)
+    qs0 = qs0.order_by('day_of_week','start_time','start_period')
+    if qs0.exists():
+        return Response({'success': True, 'data': {'lessons': LessonSerializer(qs0, many=True).data}})
+
+    # 其次：尝试定位教师（用户名为手机号或邮箱登录场景）
     teacher = None
     try:
         from apps.teachers.models import Teacher as T
@@ -596,7 +606,8 @@ def me_timetable(request):
         teacher = None
 
     if teacher:
-        qs = Lesson.objects.filter(term=term, teacher_id=teacher.id)
+        # 与 _apply_user_scope 保持一致：兼容仅存储 teacher_name 的课次
+        qs = Lesson.objects.filter(term=term).filter(Q(teacher_id=teacher.id) | Q(teacher_name=teacher.name))
         qs = _filter_by_week(qs, week)
         qs = qs.order_by('day_of_week','start_time','start_period')
         return Response({'success': True, 'data': {'lessons': LessonSerializer(qs, many=True).data}})
@@ -619,7 +630,16 @@ def me_timetable(request):
         qs = qs.order_by('day_of_week','start_time','start_period')
         return Response({'success': True, 'data': {'lessons': LessonSerializer(qs, many=True).data}})
 
-    # 默认：学校课表
+    # 教师/学生均未匹配：按显示名兜底匹配 teacher_name（便于使用姓名登录的教师）
+    display_name = _get_user_display_name(user)
+    if display_name:
+        qs = Lesson.objects.filter(term=term).filter(Q(teacher_name=display_name))
+        qs = _filter_by_week(qs, week)
+        qs = qs.order_by('day_of_week','start_time','start_period')
+        if qs.exists():
+            return Response({'success': True, 'data': {'lessons': LessonSerializer(qs, many=True).data}})
+
+    # 默认：学校课表（作为最后兜底）
     qs = Lesson.objects.filter(term=term)
     qs = _filter_by_week(qs, week)
     qs = qs.order_by('day_of_week','start_time','start_period')

@@ -1,4 +1,4 @@
-from django.contrib.auth import get_user_model
+﻿from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 
@@ -6,7 +6,7 @@ User = get_user_model()
 
 
 class UserListSerializer(serializers.ModelSerializer):
-    name = serializers.SerializerMethodField()
+    name = serializers.CharField(source="first_name", required=False, allow_blank=True)
 
     class Meta:
         model = User
@@ -22,12 +22,14 @@ class UserListSerializer(serializers.ModelSerializer):
             "date_joined",
         ]
 
-    def get_name(self, obj):
-        return obj.get_full_name() or obj.username
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["name"] = instance.get_full_name() or instance.username
+        return data
 
 
 class UserDetailSerializer(serializers.ModelSerializer):
-    name = serializers.SerializerMethodField(read_only=True)
+    name = serializers.CharField(source="first_name", required=False, allow_blank=True)
     password = serializers.CharField(write_only=True, required=False, allow_blank=False)
 
     class Meta:
@@ -47,16 +49,20 @@ class UserDetailSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "date_joined", "last_login"]
 
-    def get_name(self, obj):
-        return obj.get_full_name() or obj.username
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data["name"] = instance.get_full_name() or instance.username
+        return data
 
     def validate(self, attrs):
-        # 创建时必须提供 username 与 password
+        attrs = super().validate(attrs)
         if self.instance is None:
             if not attrs.get("username"):
                 raise serializers.ValidationError({"username": ["必填"]})
             if not attrs.get("password"):
                 raise serializers.ValidationError({"password": ["必填"]})
+        if "name" in self.initial_data and "last_name" not in self.initial_data:
+            attrs["last_name"] = ""
         return attrs
 
     def create(self, validated_data):
@@ -65,7 +71,6 @@ class UserDetailSerializer(serializers.ModelSerializer):
         if password:
             user.set_password(password)
         else:
-            # 默认随机密码（不可登录），要求后续改密
             user.set_unusable_password()
         user.save()
         return user
@@ -78,5 +83,3 @@ class UserDetailSerializer(serializers.ModelSerializer):
             instance.set_password(password)
         instance.save()
         return instance
-
-

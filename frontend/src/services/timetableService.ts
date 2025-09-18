@@ -1,4 +1,4 @@
-import axios from 'axios'
+import { api } from '@/lib/api'
 import type { TimetableQuery, TimetableResponse, LessonItem } from '@/types/timetable'
 
 function normalizeLessons(payload: any): LessonItem[] {
@@ -46,33 +46,33 @@ function normalizeLessons(payload: any): LessonItem[] {
 export const timetableService = {
   async getMyTimetable(params: { term: string; week: number }): Promise<LessonItem[]> {
     const { term, week } = params
-    const { data } = await axios.get(`/api/v1/timetable/me/`, { params: { term, week } })
-    const body: TimetableResponse['data'] = (data?.data ?? data)
+    const res = await api.get(`/timetable/me/`, { params: { term, week } })
+    const body: TimetableResponse['data'] = (res?.data ?? res)
     return normalizeLessons(body)
   },
   async getTimetable(params: TimetableQuery): Promise<LessonItem[]> {
     const { view, term, week, classId, teacherId, roomId } = params
-    const base = `/api/v1/timetable/${view === 'class' ? 'classes' : view === 'teacher' ? 'teachers' : 'rooms'}/`
+    const base = `/timetable/${view === 'class' ? 'classes' : view === 'teacher' ? 'teachers' : 'rooms'}/`
     const id = view === 'class' ? classId : view === 'teacher' ? teacherId : roomId
 
     // 非法或占位 ID（如 demo-class-1）时，回退到全校课表以避免 404
     const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
     if (!id || !UUID_RE.test(String(id))) {
-      const { data } = await axios.get(`/api/v1/timetable/school/`, { params: { term, week } })
-      const body: TimetableResponse['data'] = (data?.data ?? data)
+      const res = await api.get(`/timetable/school/`, { params: { term, week } })
+      const body: TimetableResponse['data'] = (res?.data ?? res)
       return normalizeLessons(body)
     }
 
     // 正常以 UUID 访问具体视图，并补齐尾部斜杠
-    const { data } = await axios.get(`${base}${id}/`, { params: { term, week } })
-    const body: TimetableResponse['data'] = (data?.data ?? data)
+    const res = await api.get(`${base}${id}/`, { params: { term, week } })
+    const body: TimetableResponse['data'] = (res?.data ?? res)
     return normalizeLessons(body)
   },
 
   async getSchoolTimetable(params: { term: string; week: number }): Promise<LessonItem[]> {
     const { term, week } = params
-    const { data } = await axios.get(`/api/v1/timetable/school/`, { params: { term, week } })
-    const body: TimetableResponse['data'] = (data?.data ?? data)
+    const res = await api.get(`/timetable/school/`, { params: { term, week } })
+    const body: TimetableResponse['data'] = (res?.data ?? res)
     return normalizeLessons(body)
   },
 
@@ -97,8 +97,8 @@ export const timetableService = {
       roomName: input.roomName,
       remark: input.remark,
     }
-    const { data } = await axios.patch(`/api/v1/timetable/lessons/${id}/update/`, payload)
-    return data?.data ?? data
+    const res = await api.patch(`/timetable/lessons/${id}/update/`, payload)
+    return res?.data ?? res
   },
 
   async createLesson(input: Partial<LessonItem> & { term: string; dayOfWeek: number; courseName: string }) {
@@ -122,14 +122,14 @@ export const timetableService = {
       roomName: input.roomName,
       remark: input.remark,
     }
-    const { data } = await axios.post('/api/v1/timetable/lessons/', payload)
-    return data?.data ?? data
+    const res = await api.post('/timetable/lessons/', payload)
+    return res?.data ?? res
   },
 
   // 删除单条课次
   async deleteLesson(id: string) {
-    const { data } = await axios.delete(`/api/v1/timetable/lessons/${id}/delete/`)
-    return data?.data ?? data
+    const res = await api.delete(`/timetable/lessons/${id}/delete/`)
+    return res?.data ?? res
   }
 }
 

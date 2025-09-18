@@ -1,10 +1,10 @@
-export interface UserItem {
+﻿export interface UserItem {
   id: string
   username: string
   email: string
+  name: string
   firstName?: string
   lastName?: string
-  name?: string
   isActive: boolean
   isStaff: boolean
   dateJoined?: string
@@ -26,5 +26,3 @@ export interface PaginatedUsers {
     totalPages: number
   }
 }
-
-

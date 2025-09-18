@@ -1,4 +1,4 @@
-from rest_framework.decorators import api_view, permission_classes
+﻿from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.utils.timezone import now
@@ -12,16 +12,30 @@ from django.contrib.auth import update_session_auth_hash
 def me(request):
     user = request.user
     if request.method == "PATCH":
-        first_name = (request.data.get("first_name") or "").strip()
-        last_name = (request.data.get("last_name") or "").strip()
-        email = (request.data.get("email") or "").strip()
-        if first_name is not None:
-            user.first_name = first_name
-        if last_name is not None:
-            user.last_name = last_name
-        if email is not None:
+        updated_fields = set()
+
+        if "name" in request.data:
+            name = (request.data.get("name") or "").strip()
+            user.first_name = name
+            user.last_name = ""
+            updated_fields.update({"first_name", "last_name"})
+        else:
+            if "first_name" in request.data:
+                first_name = (request.data.get("first_name") or "").strip()
+                user.first_name = first_name
+                updated_fields.add("first_name")
+            if "last_name" in request.data:
+                last_name = (request.data.get("last_name") or "").strip()
+                user.last_name = last_name
+                updated_fields.add("last_name")
+
+        if "email" in request.data:
+            email = (request.data.get("email") or "").strip()
             user.email = email
-        user.save(update_fields=["first_name", "last_name", "email"])
+            updated_fields.add("email")
+
+        if updated_fields:
+            user.save(update_fields=list(updated_fields))
 
     data = {
         "id": user.id,
@@ -56,7 +70,7 @@ def change_password(request):
                 "error": {
                     "code": "VALIDATION_ERROR",
                     "message": "数据验证失败",
-                    "details": {"password": ["old_password 与 new_password 均为必填"]},
+                    "details": {"password": ["old_password 和 new_password 均为必填"]},
                 },
                 "timestamp": now().isoformat(),
             },
@@ -77,14 +91,14 @@ def change_password(request):
         )
     try:
         validate_password(new_password, user)
-    except ValidationError as e:
+    except ValidationError as exc:
         return Response(
             {
                 "success": False,
                 "error": {
                     "code": "VALIDATION_ERROR",
                     "message": "密码不符合安全要求",
-                    "details": {"new_password": list(e.messages)},
+                    "details": {"new_password": list(exc.messages)},
                 },
                 "timestamp": now().isoformat(),
             },
@@ -93,7 +107,6 @@ def change_password(request):
 
     user.set_password(new_password)
     user.save(update_fields=["password"])
-    # 保持当前会话有效
     update_session_auth_hash(request, user)
     return Response(
         {
@@ -103,5 +116,3 @@ def change_password(request):
             "timestamp": now().isoformat(),
         }
     )
-
-
