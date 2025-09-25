@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "apps.timetable",
     "apps.changes",
     "apps.users",
+    "apps.grades",
 ]
 
 MIDDLEWARE = [

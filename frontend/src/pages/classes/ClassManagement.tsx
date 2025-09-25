@@ -16,6 +16,7 @@ import { classService } from "@/services/classService"
 import { AssignHeadTeacherModal } from "@/components/shared/AssignHeadTeacherModal"
 import type { ClassItem, ClassQueryParams, PaginatedClasses } from "@/types/class"
 import { useTabStore } from "@/stores/tabStore"
+import { toast } from "@/hooks/use-toast"
 
 export default function ClassManagement() {
   const [classes, setClasses] = useState<ClassItem[]>([])
@@ -121,7 +122,14 @@ export default function ClassManagement() {
     try {
       sessionStorage.setItem('students:init:className', classItem.name)
     } catch {}
-    addTab({ id: 'students', title: '学生管理', page: 'students', closable: true })
+    const ok = addTab({ id: 'students', title: '学生管理', page: 'students', closable: true })
+    if (!ok) {
+      toast({
+        title: '标签数量已达上限',
+        description: '最多同时打开 10 个标签页，请先关闭一些再试。',
+        variant: 'destructive'
+      })
+    }
   }
 
   return (

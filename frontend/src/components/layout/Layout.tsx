@@ -4,8 +4,9 @@ import { Sidebar } from "@/components/layout/Sidebar"
 import { TabBar } from "@/components/layout/TabBar"
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary"
 import { useTabStore } from "@/stores/tabStore"
+import { toast } from "@/hooks/use-toast"
 
-type Page = 'dashboard' | 'students' | 'classes' | 'teachers' | 'courses' | 'schedule' | 'grades' | 'analytics' | 'studentStatus' | 'newStudent' | 'studentTransfer' | 'graduationQuery' | 'settings' | 'users'
+type Page = 'dashboard' | 'students' | 'classes' | 'teachers' | 'courses' | 'schedule' | 'grades' | 'analytics' | 'examCreate' | 'studentStatus' | 'newStudent' | 'studentTransfer' | 'graduationQuery' | 'settings' | 'users'
 
 interface LayoutProps {
   children: ReactNode
@@ -23,7 +24,8 @@ const pageTitles: Record<Page, string> = {
   courses: '课程管理',
   schedule: '课程表',
   grades: '成绩管理',
-  analytics: '数据分析',
+  analytics: '成绩分析',
+  examCreate: '考试创建',
   studentStatus: '学籍管理',
   newStudent: '新生入学',
   studentTransfer: '异动办理',
@@ -47,12 +49,19 @@ export function Layout({ children, onNavigate, currentPage = 'dashboard', isAdmi
   const handleSidebarNavigate = (page: Page) => {
     const title = pageTitles[page]
     if (title) {
-      addTab({
+      const ok = addTab({
         id: page,
         title: title,
         page: page,
         closable: page !== 'dashboard' // 仪表盘不可关闭
       })
+      if (!ok) {
+        toast({
+          title: '标签数量已达上限',
+          description: '最多同时打开 10 个标签页，请先关闭一些再试。',
+          variant: 'destructive'
+        })
+      }
     }
     onNavigate?.(page)
   }
@@ -71,9 +80,11 @@ export function Layout({ children, onNavigate, currentPage = 'dashboard', isAdmi
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <div className="flex">
-        <Sidebar onNavigate={handleSidebarNavigate} currentPage={currentPage} isAdmin={isAdmin} />
-        <div className="flex-1 flex flex-col mt-16 ml-64">
+      {/* 使用绝对定位的侧边栏和内容区域偏移 */}
+      <div className="relative">
+        <Sidebar onNavigate={handleSidebarNavigate as any} currentPage={currentPage as any} isAdmin={isAdmin} />
+        {/* 主内容区域使用固定定位，确保不会滑到侧边栏下面 */}
+        <div className="fixed left-64 right-0 top-16 bottom-0 flex flex-col">
           <ErrorBoundary fallback={
             <div className="h-10 bg-muted/20 border-b flex items-center px-4">
               <span className="text-sm text-muted-foreground">标签栏加载失败</span>
@@ -87,7 +98,8 @@ export function Layout({ children, onNavigate, currentPage = 'dashboard', isAdmi
               onClearAll={clearTabs}
             />
           </ErrorBoundary>
-          <main className="flex-1 p-6">
+          {/* 主内容区域使用 overflow-auto 允许滚动 */}
+          <main className="flex-1 p-6 overflow-auto">
             {children}
           </main>
         </div>

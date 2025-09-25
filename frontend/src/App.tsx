@@ -12,9 +12,13 @@ import NewStudentEnrollment from '@/pages/enrollment/NewStudentEnrollment'
 import StudentChanges from '@/pages/students/StudentChanges'
 
 import { ThemeProvider } from '@/components/providers/ThemeProvider'
+import GradeManagement from '@/pages/grades/GradeManagement'
+import GradeAnalytics from '@/pages/grades/GradeAnalytics'
+import ExamCreate from '@/pages/grades/ExamCreate'
 import UserManagement from '@/pages/users/UserManagement'
 import { useAuthInfoStore } from '@/stores/authInfo'
 import { Toaster } from '@/components/ui/toast'
+import TestScroll from '@/pages/grades/TestScroll'
 
 type Page = 'dashboard' | 'students' | 'classes' | 'teachers' | 'courses' | 'schedule' | 'grades' | 'analytics' | 'studentStatus' | 'newStudent' | 'studentTransfer' | 'graduationQuery' | 'settings' | 'users'
 function App() {
@@ -36,7 +40,23 @@ function App() {
       case 'schedule':
         return <Timetable />
       case 'grades':
+        return <GradeManagement />
+        // return <TestScroll />
       case 'analytics':
+        return <GradeAnalytics />
+      case 'examCreate': {
+        if (!isAdmin) {
+          return (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <h2 className="text-2xl font-bold mb-2">未授权</h2>
+                <p className="text-muted-foreground">只有管理员可以访问“考试创建”。</p>
+              </div>
+            </div>
+          )
+        }
+        return <ExamCreate />
+      }
       case 'studentStatus':
       case 'settings':
         return (

@@ -147,6 +147,44 @@ alwaysApply: false
 
 ---
 
+## 事件：/api/v1/timetable/import/ 导入 500/400（Excel/CSV 解析与字段不全）
+
+### 现象
+- 上传 Excel/CSV 后返回 500 或 400：
+  - 500 常见于服务缺少 `openpyxl` 或解析异常未被捕获
+  - 400 常见于缺少 `file/term`、表头不符、编码不兼容
+
+### 根因
+- 依赖缺失：未安装 `openpyxl`（Excel 解析需要）
+- 编码与表头：CSV 非 UTF-8/GBK 系；表头未映射到 `course_name/day/...`
+- 必填缺失：表单未传 `term`；数据行缺少课程名导致跳过，最终 `created=0`
+
+### 修复与规范
+- 依赖：后端安装 `openpyxl`；异常捕获返回统一错误 `{ success:false, error }`
+- 编码回退：使用 `utf-8-sig → utf-8 → gbk → gb18030 → cp936`
+- 表头映射：使用以下同义映射（后端已内置）：
+  - `term|学期 → term`，`weeks|周次 → weeks`，`day|星期|星期几 → day`
+  - `start_time|开始时间 → start_time`，`end_time|结束时间 → end_time`
+  - `start_period|开始节次 → start_period`，`end_period|结束节次 → end_period`
+  - `course_name|课程名称|课程 → course_name`，`teacher_name|教师名称|老师|授课老师 → teacher_name`
+  - `class_name|班级名称|班级 → class_name`，`room|教室|教室名称 → room`
+  - `week_type|单双周 → week_type`，`remark|备注 → remark`
+- 覆盖模式：传 `mode=overwrite` 可清空指定 `term` 的旧课表后导入
+
+### 前端建议
+- 以 `FormData` 传 `file` 与 `term`；mode 可选 `append|overwrite`
+- 导入前用模板文件，避免表头不一致；不强制 Accept 头
+- 导入失败时打印 `error.response.data`，定位 `error.details`
+
+### 检查清单（导入课表）
+- [ ] 安装 `openpyxl`（Excel 导入）
+- [ ] 传入 `term` 与 `file`
+- [ ] CSV 编码在回退范围内（utf-8/gbk/gb18030/cp936）
+- [ ] 表头符合映射规则
+- [ ] 需要覆盖导入时使用 `mode=overwrite`
+
+---
+
 ## 事件：虚拟化表格选择列联动异常（全选/单选显示不正常）
 
 ### 现象

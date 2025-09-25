@@ -17,7 +17,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-type Page = 'dashboard' | 'students' | 'classes' | 'teachers' | 'courses' | 'schedule' | 'grades' | 'analytics' | 'studentStatus' | 'newStudent' | 'studentTransfer' | 'graduationQuery' | 'settings' | 'users'
+type Page = 'dashboard' | 'students' | 'classes' | 'teachers' | 'courses' | 'schedule' | 'grades' | 'analytics' | 'examCreate' | 'studentStatus' | 'newStudent' | 'studentTransfer' | 'graduationQuery' | 'settings' | 'users'
 
 interface SidebarProps {
   onNavigate?: (page: Page) => void
@@ -52,6 +52,8 @@ const courseItems = [
 const gradeItems = [
   { icon: FileText, label: "成绩管理", page: "grades" as Page },
   { icon: BarChart, label: "成绩分析", page: "analytics" as Page },
+  // 考试创建：仅管理员显示（渲染时过滤）
+  { icon: FileText, label: "考试创建", page: "examCreate" as Page },
 ]
 
 export function Sidebar({ onNavigate, currentPage = 'dashboard', isAdmin = false }: SidebarProps) {
@@ -69,7 +71,7 @@ export function Sidebar({ onNavigate, currentPage = 'dashboard', isAdmin = false
   // 检查是否是课程管理相关页面
   const isCoursesActive = ['courses', 'schedule'].includes(currentPage)
   // 检查是否是成绩管理相关页面
-  const isGradesActive = ['grades', 'analytics'].includes(currentPage)
+  const isGradesActive = ['grades', 'analytics', 'examCreate'].includes(currentPage)
   
   // 处理学籍管理菜单展开/收起
   const handleStudentStatusToggle = () => {
@@ -304,7 +306,9 @@ export function Sidebar({ onNavigate, currentPage = 'dashboard', isAdmin = false
                 )}
               >
                 <div className="ml-4 border-l border-border pl-4 space-y-1">
-                  {gradeItems.map((item) => {
+                  {gradeItems
+                    .filter(item => isAdmin || item.page !== 'examCreate')
+                    .map((item) => {
                     const Icon = item.icon
                     const isSubActive = currentPage === item.page
                     return (

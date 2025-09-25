@@ -85,7 +85,7 @@ export function Select({ placeholder, value, onValueChange, children, className 
         </button>
         
         {isOpen && (
-          <div className="absolute top-full mt-1 w-full min-w-max rounded-md border bg-popover p-1 shadow-lg z-50 max-h-60 overflow-y-auto">
+          <div className="absolute top-full mt-1 w-full min-w-max rounded-md border bg-popover p-1 shadow-lg z-[80] max-h-60 overflow-y-auto">
             {children}
           </div>
         )}

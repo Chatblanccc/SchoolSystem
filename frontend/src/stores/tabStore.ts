@@ -16,7 +16,7 @@ interface TabState {
   activeTabId: string | null
   
   // 添加标签
-  addTab: (tab: StoredTab) => void
+  addTab: (tab: StoredTab) => boolean
   
   // 移除标签
   removeTab: (tabId: string) => void
@@ -54,18 +54,19 @@ export const useTabStore = create<TabState>()(
         if (exists) {
           // 如果标签已存在，直接激活
           set({ activeTabId: tab.id })
-          return
+          return true
         }
 
         // 限制最大标签数量（含仪表盘）
         if (tabs.length >= MAX_TABS) {
-          return
+          return false
         }
 
         set({
           tabs: [...tabs, tab],
           activeTabId: tab.id
         })
+        return true
       },
       
       removeTab: (tabId) => {

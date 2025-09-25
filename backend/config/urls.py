@@ -33,6 +33,7 @@ urlpatterns = [
     path("api/v1/", include("apps.changes.urls")),
     path("api/v1/", include("apps.common.urls")),
     path("api/v1/", include("apps.users.urls")),
+    path("api/v1/", include("apps.grades.urls")),
     # Auth (JWT)
     path("api/v1/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/v1/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),

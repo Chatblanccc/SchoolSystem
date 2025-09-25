@@ -201,6 +201,34 @@ BYSS-SchoolSystem/
 4. **CHANGELOG**: 版本更新记录
 5. **cursor 规则**: 根据项目的进度更新cursor 规则：.cursor/rules/backendrules.mdc, .cursor/rules/frontendrules.mdc, .cursor/rules/overallrules.mdc
 
+### 规则执行顺序（强制）
+1. 在任何代码编辑前，先阅读 `.cursor/rules/errorlogging.mdc`，避免重复犯错。
+2. 确认 `.cursor/rules/*.mdc` 是否有近期更新，并遵循新增规范。
+3. 后端开发：
+   - 激活虚拟环境：`backend/myenv/Scripts/activate`（Windows PowerShell 使用 `./backend/myenv/Scripts/Activate.ps1`）
+   - 运行开发服务：`python backend/manage.py runserver 127.0.0.1:8000 --noreload`
+   - 如有模型变更：`python backend/manage.py makemigrations && python backend/manage.py migrate`
+4. 前端开发：`pnpm dev`（或 `npm run dev`）确保代理 `/api` 指向 `http://127.0.0.1:8000`
+5. 提交前自检：
+   - 接口包装与分页键名是否与本规范一致（见“API 设计规范”）
+   - 字段命名是否前后端一致（见“前后端字段约定/映射”）
+   - 导入导出是否遵循统一规范（见下文）
+   - 表格类组件是否遵循“内容居中、自适应宽度、响应式”三项要求
+
+### 导入导出统一规范
+1. 编码与解码：
+   - 导入接口后端应按顺序尝试解码：`utf-8-sig` → `utf-8` → `gbk` → `gb18030` → `cp936`
+   - 表头兼容中英同义映射（如 code|编码、name|名称、grade|年级 ...），详见错误记录文档的映射清单
+2. 导出响应：
+   - 后端直接返回 `HttpResponse` 设置 `Content-Type: text/csv; charset=utf-8` 与 `Content-Disposition`
+   - 前端使用 `fetch(url)`→`blob()` 下载，不强制 `Accept: text/csv`
+3. 模板规范：
+   - 文件名使用中文，如：`学生导入模板.csv`
+   - 表头统一中文，如：`学号,姓名,性别,班级,状态,身份证号,市学籍号,国学籍号,出生日期,家庭住址`
+
+### Context7 使用约定
+当需要生成代码、进行环境/配置步骤、或查询第三方库/API 文档时，默认使用 Context7 工具链（参见 `.cursor/rules/context7.mdc`）。
+
 ### 项目管理
 1. **迭代周期**: 2周一个 Sprint
 2. **任务管理**: GitHub Projects
@@ -263,6 +291,11 @@ BYSS-SchoolSystem/
 
 ## 最新更新
 
+### v2.6.0 (2025-09-19) - 规则执行顺序与导入导出统一规范
+- 新增“规则执行顺序（强制）”，明确编辑前检查与本地运行步骤
+- 补充“导入导出统一规范”，标准化编码回退、表头映射与下载方式
+- 明确 Context7 使用约定，涉及代码/配置/文档检索时的默认流程
+
 ### v2.2.0 (2025-01-03) - 表格设计规范优化
 - 统一表格内容居中对齐，提升视觉体验
 - 完善虚拟化表格的设计规范和样式指南
@@ -278,5 +311,5 @@ BYSS-SchoolSystem/
 - 更新相关技术文档
 
 ---
-最后更新: 2025-01-03
+最后更新: 2025-09-19
 维护者: BYSS 技术团队
