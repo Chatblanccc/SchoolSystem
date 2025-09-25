@@ -13,7 +13,11 @@ from apps.students.filters import StudentFilter
 
 
 class StudentViewSet(viewsets.ModelViewSet):
-    queryset = Student.objects.select_related("current_class", "current_class__grade").all()
+    queryset = (
+        Student.objects.select_related("current_class", "current_class__grade")
+        .filter(deleted_at__isnull=True)
+        .all()
+    )
     serializer_class = StudentDetailSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
     search_fields = ["name", "student_id", "phone"]
@@ -62,8 +66,22 @@ class StudentViewSet(viewsets.ModelViewSet):
         return Response({"success": True, "data": serializer.data})
 
     def destroy(self, request, *args, **kwargs):
-        super().destroy(request, *args, **kwargs)
-        return Response({"success": True, "data": None})
+        instance = self.get_object()
+        force = str(request.query_params.get("force", "")).lower() in {"1", "true", "yes"}
+        if force:
+            # 硬删除：先清理可能的保护性外键（如 StudentChange），再物理删除
+            from django.db import transaction
+            from apps.changes.models import StudentChange
+            with transaction.atomic():
+                StudentChange.objects.filter(student=instance).delete()
+                instance.delete()
+            return Response({"success": True, "data": None})
+        else:
+            # 软删除：打标 deleted_at，避免外键约束报错
+            from django.utils import timezone
+            instance.deleted_at = timezone.now()
+            instance.save(update_fields=["deleted_at"])
+            return Response({"success": True, "data": None})
 
     @action(detail=False, methods=["POST"], url_path="import", parser_classes=[MultiPartParser])
     def import_students(self, request):
@@ -100,6 +118,7 @@ class StudentViewSet(viewsets.ModelViewSet):
         reader = csv.DictReader(StringIO(content))
         created_count = 0
         updated_count = 0
+        error_rows = []
 
         def pick(d: dict, keys: list[str]) -> str:
             for k in keys:
@@ -109,56 +128,108 @@ class StudentViewSet(viewsets.ModelViewSet):
             return ""
 
         with transaction.atomic():
-            for row in reader:
-                if not row:
-                    continue
-                student_id = pick(row, ["student_id", "学号"]) or ""
-                name = pick(row, ["name", "姓名"]) or ""
-                class_name = pick(row, ["class", "class_name", "班级"]) or ""
-                gender = pick(row, ["gender", "性别"]) or "男"
-                status_val = pick(row, ["status", "状态"]) or "在校"
+            for idx, row in enumerate(reader, start=2):  # 数据行自第2行起
+                try:
+                    if not row:
+                        continue
+                    student_id = pick(row, ["student_id", "学号"]) or ""
+                    name = pick(row, ["name", "姓名"]) or ""
+                    class_code = pick(row, ["class_code", "班级编码", "code"]) or ""
+                    class_name = pick(row, ["class", "class_name", "班级"]) or ""
+                    grade_name = pick(row, ["grade", "grade_name", "年级"]) or ""
+                    gender = pick(row, ["gender", "性别"]) or "男"
+                    status_val = pick(row, ["status", "状态"]) or "在校"
 
-                id_card = pick(row, ["id_card", "身份证号"]) or ""
-                gz_id = pick(row, ["guangzhou_student_id", "市学籍号"]) or ""
-                national_id = pick(row, ["national_student_id", "国学籍号"]) or ""
-                birth_date_str = pick(row, ["birth_date", "出生日期"]) or ""
-                address = pick(row, ["address", "家庭住址", "homeAddress", "home_address"]) or ""
+                    id_card = pick(row, ["id_card", "身份证号"]) or ""
+                    gz_id = pick(row, ["guangzhou_student_id", "市学籍号"]) or ""
+                    national_id = pick(row, ["national_student_id", "国学籍号"]) or ""
+                    birth_date_str = pick(row, ["birth_date", "出生日期"]) or ""
+                    address = pick(row, ["address", "家庭住址", "homeAddress", "home_address"]) or ""
 
-                if not student_id or not name or not class_name:
-                    continue
+                    if not student_id or not name or not class_name:
+                        error_rows.append({"row": idx, "message": "学号/姓名/班级不能为空"})
+                        continue
 
-                # 解析出生日期
-                birth_d = None
-                if birth_date_str:
-                    try:
-                        birth_d = date.fromisoformat(birth_date_str)
-                    except Exception:
-                        birth_d = None
+                    gender = gender.strip()
+                    if gender not in {"男", "女"}:
+                        gender = "男"
 
-                # 班级
-                grade, _ = Grade.objects.get_or_create(name="未分级")
-                current_class, _ = Class.objects.get_or_create(
-                    name=class_name, defaults={"code": class_name, "grade": grade}
-                )
+                    birth_d = None
+                    if birth_date_str:
+                        try:
+                            birth_d = date.fromisoformat(birth_date_str)
+                        except Exception:
+                            error_rows.append({"row": idx, "message": f"出生日期格式无效: {birth_date_str}"})
+                            birth_d = None
 
-                obj, created = Student.objects.update_or_create(
-                    student_id=student_id,
-                    defaults={
-                        "name": name,
-                        "gender": gender,
-                        "current_class": current_class,
-                        "status": status_val,
-                        "id_card": id_card,
-                        "guangzhou_student_id": gz_id,
-                        "national_student_id": national_id,
-                        "birth_date": birth_d,
-                        "address": address,
+                    # 允许存在同名班级：优先按编码匹配，其次按年级+名称
+                    class_qs = Class.objects.all()
+                    if class_code:
+                        class_qs = class_qs.filter(code=class_code)
+                    else:
+                        class_qs = class_qs.filter(name=class_name)
+                        if grade_name:
+                            class_qs = class_qs.filter(grade__name=grade_name)
+
+                    current_class = class_qs.order_by("created_at").first()
+
+                    if current_class is None:
+                        # 若未找到，按年级名创建，默认归入“未分级”
+                        if grade_name:
+                            grade, _ = Grade.objects.get_or_create(name=grade_name)
+                        else:
+                            grade, _ = Grade.objects.get_or_create(name="未分级")
+
+                        if class_code:
+                            current_class, _ = Class.objects.get_or_create(
+                                code=class_code,
+                                defaults={
+                                    "name": class_name or class_code,
+                                    "grade": grade,
+                                },
+                            )
+                        else:
+                            current_class, _ = Class.objects.get_or_create(
+                                name=class_name,
+                                grade=grade,
+                                defaults={"code": class_name or grade.name},
+                            )
+
+                    obj, created = Student.objects.update_or_create(
+                        student_id=student_id,
+                        defaults={
+                            "name": name,
+                            "gender": gender,
+                            "current_class": current_class,
+                            "status": status_val,
+                            "id_card": id_card,
+                            "guangzhou_student_id": gz_id,
+                            "national_student_id": national_id,
+                            "birth_date": birth_d,
+                            "address": address,
+                            "deleted_at": None,
+                        },
+                    )
+                    if created:
+                        created_count += 1
+                    else:
+                        updated_count += 1
+                except Exception as exc:
+                    error_rows.append({"row": idx, "message": str(exc)})
+
+        if error_rows:
+            return Response(
+                {
+                    "success": False,
+                    "error": {
+                        "code": "IMPORT_ERROR",
+                        "message": "部分数据导入失败",
+                        "details": error_rows,
                     },
-                )
-                if created:
-                    created_count += 1
-                else:
-                    updated_count += 1
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         return Response({"success": True, "data": {"created": created_count, "updated": updated_count}})
 
     @action(detail=False, methods=["GET"], url_path="export")
@@ -177,6 +248,7 @@ class StudentViewSet(viewsets.ModelViewSet):
             "姓名",
             "性别",
             "班级",
+            "班级编码",
             "状态",
             "身份证号",
             "市学籍号",
@@ -192,6 +264,7 @@ class StudentViewSet(viewsets.ModelViewSet):
                 s.name,
                 s.gender,
                 s.current_class.name if s.current_class_id else "",
+                s.current_class.code if s.current_class_id else "",
                 s.status,
                 s.id_card or "",
                 s.guangzhou_student_id or "",
@@ -209,13 +282,24 @@ class StudentViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["POST"], url_path="bulk-delete")
     def bulk_delete(self, request):
         ids = request.data.get("ids", [])
+        force = bool(request.data.get("force")) or str(request.data.get("force", "")).lower() in {"1", "true", "yes"}
         if not isinstance(ids, list) or not ids:
             return Response(
                 {"success": False, "error": {"code": "VALIDATION_ERROR", "message": "ids 必须为非空数组"}},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        Student.objects.filter(id__in=ids).delete()
-        return Response({"success": True, "data": {"deleted": len(ids)}})
+        if force:
+            from django.db import transaction
+            from apps.changes.models import StudentChange
+            with transaction.atomic():
+                StudentChange.objects.filter(student_id__in=ids).delete()
+                deleted_tuple = Student.objects.filter(id__in=ids).delete()
+                # deleted_tuple: (num_deleted, { 'app.Model': count, ...})
+                return Response({"success": True, "data": {"deleted": deleted_tuple[0]}})
+        else:
+            from django.utils import timezone
+            updated = Student.objects.filter(id__in=ids, deleted_at__isnull=True).update(deleted_at=timezone.now())
+            return Response({"success": True, "data": {"deleted": updated}})
 
     @action(detail=False, methods=["POST"], url_path="bulk-update-status")
     def bulk_update_status(self, request):

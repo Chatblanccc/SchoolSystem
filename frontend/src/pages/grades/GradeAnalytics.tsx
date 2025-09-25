@@ -6,6 +6,8 @@ import { Select, SelectItem } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { VirtualTable, useVirtualTableColumns, type VirtualTableColumn } from "@/components/ui/virtual-table"
+import { Dropdown, DropdownContent, DropdownItem, DropdownTrigger } from "@/components/ui/dropdown"
+import { Download } from "lucide-react"
 
 export default function GradeAnalytics() {
   const [exams, setExams] = useState<ExamListItem[]>([])
@@ -19,6 +21,7 @@ export default function GradeAnalytics() {
   const [excellent, setExcellent] = useState<string>("0.9")
   const [good, setGood] = useState<string>("0.8")
   const [low, setLow] = useState<string>("0.6")
+  const [passLine, setPassLine] = useState<string>("0.6")
 
   const { createColumn } = useVirtualTableColumns<ScoreAnalyticsRow>()
 
@@ -65,6 +68,7 @@ export default function GradeAnalytics() {
         excellent: parseRatio(excellent),
         good: parseRatio(good),
         low: parseRatio(low),
+        pass: parseRatio(passLine),
       })
       setRows(data)
     } finally {
@@ -85,9 +89,11 @@ export default function GradeAnalytics() {
       createColumn('excellentRate', '优秀率(%)', 120, { render: (v) => v?.toFixed?.(2) ?? '-' }),
       createColumn('goodRate', '良好率(%)', 120, { render: (v) => v?.toFixed?.(2) ?? '-' }),
       createColumn('lowRate', '低分率(%)', 120, { render: (v) => v?.toFixed?.(2) ?? '-' }),
+      createColumn('passRate', '合格率(%)', 120, { render: (v) => v?.toFixed?.(2) ?? '-' }),
       createColumn('aboveAvgRate', '超均率(%)', 120, { render: (v) => v?.toFixed?.(2) ?? '-' }),
       createColumn('classAvgScore', '班均分', 120, { render: (v) => v == null ? '-' : Number(v).toFixed(2) }),
       createColumn('gradeAvgScore', '年级均分', 120, { render: (v) => v == null ? '-' : Number(v).toFixed(2) }),
+      createColumn('compareAvgRate', '比均率', 120, { render: (v) => v == null ? '-' : Number(v).toFixed(2) }),
     ]
   }, [createColumn])
 
@@ -107,14 +113,42 @@ export default function GradeAnalytics() {
           ))}
         </Select>
 
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">优秀≥</span>
-          <Input className="w-20" value={excellent} onChange={(e) => setExcellent(e.target.value)} placeholder="0.9" />
-          <span className="text-sm text-muted-foreground">良好≥</span>
-          <Input className="w-20" value={good} onChange={(e) => setGood(e.target.value)} placeholder="0.8" />
-          <span className="text-sm text-muted-foreground">低分＜</span>
-          <Input className="w-20" value={low} onChange={(e) => setLow(e.target.value)} placeholder="0.6" />
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">优秀≥</span>
+            <Input className="w-20" value={excellent} onChange={(e) => setExcellent(e.target.value)} placeholder="0.9" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">良好≥</span>
+            <Input className="w-20" value={good} onChange={(e) => setGood(e.target.value)} placeholder="0.8" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">低分＜</span>
+            <Input className="w-20" value={low} onChange={(e) => setLow(e.target.value)} placeholder="0.6" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">合格≥</span>
+            <Input className="w-20" value={passLine} onChange={(e) => setPassLine(e.target.value)} placeholder="0.6" />
+          </div>
           <Button variant="secondary" onClick={fetchData}>应用阈值</Button>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              if (!examId) return
+              void gradeService.exportScoreAnalytics({
+                examId,
+                classId,
+                excellent: parseRatio(excellent),
+                good: parseRatio(good),
+                low: parseRatio(low),
+                pass: parseRatio(passLine),
+                format: 'csv',
+              })
+            }}
+          >
+            <Download className="w-4 h-4 mr-2" />
+            导出
+          </Button>
         </div>
       </div>
 

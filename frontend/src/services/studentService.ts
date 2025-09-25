@@ -93,11 +93,12 @@ export const studentService = {
     return mapDtoToStudent(body)
   },
 
-  async deleteStudent(id: string): Promise<void> {
-    await axios.delete(`/api/v1/students/${id}/`)
+  async deleteStudent(id: string, options?: { force?: boolean }): Promise<void> {
+    const force = options?.force ?? true
+    await axios.delete(`/api/v1/students/${id}/`, { params: { force } })
   },
 
-  async importStudents(file: File): Promise<{ created: number }> {
+  async importStudents(file: File): Promise<{ created: number; updated?: number; errors?: any[] }> {
     const form = new FormData()
     form.append("file", file)
     const { data } = await axios.post("/api/v1/students/import/", form, {
@@ -134,8 +135,9 @@ export const studentService = {
     URL.revokeObjectURL(objectUrl)
   },
 
-  async bulkDelete(ids: string[]): Promise<{ deleted: number }> {
-    const { data } = await axios.post("/api/v1/students/bulk-delete/", { ids })
+  async bulkDelete(ids: string[], options?: { force?: boolean }): Promise<{ deleted: number }> {
+    const force = options?.force ?? true
+    const { data } = await axios.post("/api/v1/students/bulk-delete/", { ids, force })
     return data?.data ?? data
   },
 

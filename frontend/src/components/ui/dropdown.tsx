@@ -6,11 +6,20 @@ interface DropdownProps {
   className?: string
 }
 
-interface DropdownTriggerProps {
-  children: React.ReactNode
-  className?: string
-  onClick?: () => void
-}
+type DropdownTriggerProps = (
+  | {
+      children: React.ReactElement
+      className?: string
+      onClick?: () => void
+      asChild: true
+    }
+  | {
+      children: React.ReactNode
+      className?: string
+      onClick?: () => void
+      asChild?: false
+    }
+)
 
 interface DropdownContentProps {
   children: React.ReactNode
@@ -59,7 +68,7 @@ export function Dropdown({ children, className }: DropdownProps) {
   )
 }
 
-export function DropdownTrigger({ children, className, onClick }: DropdownTriggerProps) {
+export function DropdownTrigger({ children, className, onClick, asChild = false }: DropdownTriggerProps) {
   const { open, setOpen } = React.useContext(DropdownContext)
 
   const handleClick = () => {
@@ -67,9 +76,19 @@ export function DropdownTrigger({ children, className, onClick }: DropdownTrigge
     onClick?.()
   }
 
+  if (asChild && React.isValidElement(children)) {
+    return React.cloneElement(children, {
+      className: cn("outline-none", children.props.className, className),
+      onClick: (event: React.MouseEvent) => {
+        children.props.onClick?.(event)
+        handleClick()
+      }
+    })
+  }
+
   return (
-    <button 
-      className={cn("outline-none", className)} 
+    <button
+      className={cn("outline-none", className)}
       onClick={handleClick}
     >
       {children}

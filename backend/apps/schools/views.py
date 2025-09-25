@@ -1,4 +1,4 @@
-from django.db.models import Count, Value, IntegerField
+from django.db.models import Count, Value, IntegerField, Q
 from django.utils import timezone
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser
@@ -13,11 +13,11 @@ from .serializers import ClassListSerializer, ClassDetailSerializer
 
 
 class ClassViewSet(viewsets.ModelViewSet):
-    # 学生模块接入后，使用 Count("students") 获取人数
+    # 学生模块接入后，使用 Count("students") 获取人数（仅统计未软删除学生）
     queryset = (
-        Class.objects.all()
+        Class.objects.filter(deleted_at__isnull=True)
         .select_related("grade")
-        .annotate(student_count=Count("students"))
+        .annotate(student_count=Count("students", filter=Q(students__deleted_at__isnull=True)))
     )
     serializer_class = ClassDetailSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
@@ -74,6 +74,44 @@ class ClassViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(queryset, many=True)
         return Response({"success": True, "data": serializer.data})
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        force = str(request.query_params.get("force", "")).lower() in {"1", "true", "yes"}
+        delete_students = str(request.query_params.get("delete_students", "")).lower() in {"1", "true", "yes"}
+        if force:
+            # 若有学生且未指定 delete_students=true，则返回业务错误
+            from django.db import transaction
+            from apps.students.models import Student
+            from apps.grades.models import Score
+            from apps.teachers.models import TeachingAssignment
+
+            existing_student_qs = Student.objects.filter(current_class=instance)
+            if existing_student_qs.exists() and not delete_students:
+                return Response({
+                    "success": False,
+                    "error": {
+                        "code": "CLASS_HAS_STUDENTS",
+                        "message": "班级下存在学生，需先转移或使用 delete_students=true 硬删除",
+                    }
+                }, status=400)
+            with transaction.atomic():
+                # 先清理与班级关联的成绩与任课关系，避免 PROTECT 限制
+                Score.objects.filter(class_ref=instance).delete()
+                TeachingAssignment.objects.filter(class_ref=instance).delete()
+                if delete_students:
+                    # 同时删除关联学生（成绩已清理，Student -> Score 也会级联）
+                    student_ids = list(existing_student_qs.values_list('id', flat=True))
+                    if student_ids:
+                        existing_student_qs.delete()
+                instance.delete()
+            return Response({"success": True, "data": None})
+        else:
+            # 软删除：打标 deleted_at
+            from django.utils import timezone
+            instance.deleted_at = timezone.now()
+            instance.save(update_fields=["deleted_at"])
+            return Response({"success": True, "data": None})
 
     @action(detail=False, methods=["post"], url_path="import", parser_classes=[MultiPartParser])
     def import_classes(self, request):

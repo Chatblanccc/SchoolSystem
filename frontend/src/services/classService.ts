@@ -92,8 +92,10 @@ export const classService = {
     return mapDtoToClassItem(body)
   },
 
-  async deleteClass(id: string): Promise<void> {
-    await axios.delete(`/api/v1/classes/${id}/`)
+  async deleteClass(id: string, options?: { force?: boolean; deleteStudents?: boolean }): Promise<void> {
+    const force = options?.force ?? true
+    const delete_students = options?.deleteStudents ?? true
+    await axios.delete(`/api/v1/classes/${id}/`, { params: { force, delete_students } })
   },
 
   async assignHeadTeacher(id: string, teacherId: string | null): Promise<ClassItem> {

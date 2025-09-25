@@ -204,16 +204,98 @@ export const gradeService = {
     return results
   }
   ,
-  async getScoreAnalytics(params: { examId: string; classId?: string; courseId?: string; excellent?: number; good?: number; low?: number }): Promise<ScoreAnalyticsRow[]> {
+  async getScoreAnalytics(params: { examId: string; classId?: string; courseId?: string; excellent?: number; good?: number; low?: number; pass?: number }): Promise<ScoreAnalyticsRow[]> {
     const q: any = { exam: params.examId }
     if (params.classId) q.class_ref = params.classId
     if (params.courseId) q.course = params.courseId
     if (params.excellent != null) q.excellent = params.excellent
     if (params.good != null) q.good = params.good
     if (params.low != null) q.low = params.low
+    if (params.pass != null) q.pass = params.pass
     const { data } = await axios.get("/api/v1/scores/analytics/", { params: q })
     const payload = data?.data ?? data
     return payload?.results ?? []
+  },
+  async exportScoreAnalytics(params: { examId: string; classId?: string; courseId?: string; excellent?: number; good?: number; low?: number; pass?: number; format?: 'csv' | 'xlsx' }): Promise<void> {
+    const q = new URLSearchParams()
+    q.set("exam", params.examId)
+    if (params.classId) q.set("class_ref", params.classId)
+    if (params.courseId) q.set("course", params.courseId)
+    if (params.excellent != null) q.set("excellent", String(params.excellent))
+    if (params.good != null) q.set("good", String(params.good))
+    if (params.low != null) q.set("low", String(params.low))
+    if (params.pass != null) q.set("pass", String(params.pass))
+    if (params.format) q.set("format", params.format)
+    // 优先尝试后端导出接口（多路径回退）
+    const urls = [
+      `/api/v1/scores/analytics/export/?${q.toString()}`,
+      `/api/v1/scores/analytics-export/?${q.toString()}`,
+      `/api/v1/scores/analytics/?${q.toString()}`,
+    ]
+    for (const url of urls) {
+      try {
+        const res = await fetch(url)
+        if (res.ok) {
+          const blob = await res.blob()
+          const objectUrl = URL.createObjectURL(blob)
+          const a = document.createElement("a")
+          a.href = objectUrl
+          a.download = params.format === "xlsx" ? `score-analytics_${Date.now()}.xlsx` : `score-analytics_${Date.now()}.csv`
+          document.body.appendChild(a)
+          a.click()
+          a.remove()
+          URL.revokeObjectURL(objectUrl)
+          return
+        }
+      } catch (_) {
+        // 忽略，继续尝试下一个 URL
+      }
+    }
+
+    // 后端不可用时，前端降级：取分析数据并生成 CSV 下载
+    const rows = await this.getScoreAnalytics({
+      examId: params.examId,
+      classId: params.classId,
+      courseId: params.courseId,
+      excellent: params.excellent,
+      good: params.good,
+      low: params.low,
+      pass: params.pass,
+    })
+    const header = [
+      '班级','科目','样本数','优秀率(%)','良好率(%)','低分率(%)','合格率(%)','超均率(%)','班均分','年级均分','比均率'
+    ]
+    const escape = (v: any) => {
+      if (v == null) return ''
+      const s = String(v)
+      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
+    }
+    const lines: string[] = [header.join(',')]
+    for (const r of rows) {
+      lines.push([
+        escape(r.className),
+        escape(r.courseName),
+        escape(r.sampleSize),
+        escape(r.excellentRate?.toFixed?.(2) ?? r.excellentRate ?? ''),
+        escape(r.goodRate?.toFixed?.(2) ?? r.goodRate ?? ''),
+        escape(r.lowRate?.toFixed?.(2) ?? r.lowRate ?? ''),
+        escape(r.passRate?.toFixed?.(2) ?? r.passRate ?? ''),
+        escape(r.aboveAvgRate?.toFixed?.(2) ?? r.aboveAvgRate ?? ''),
+        escape(r.classAvgScore != null ? Number(r.classAvgScore).toFixed(2) : ''),
+        escape(r.gradeAvgScore != null ? Number(r.gradeAvgScore).toFixed(2) : ''),
+        escape(r.compareAvgRate != null ? Number(r.compareAvgRate).toFixed(2) : ''),
+      ].join(','))
+    }
+    const csv = lines.join('\n')
+    const blob = new Blob([csv], { type: 'text/csv; charset=utf-8' })
+    const objectUrl = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = objectUrl
+    a.download = `score-analytics_${Date.now()}.csv`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(objectUrl)
   }
 }
 

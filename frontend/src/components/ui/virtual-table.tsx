@@ -19,6 +19,8 @@ interface VirtualTableProps<T> {
   onRowClick?: (record: T, index: number) => void
   loading?: boolean
   emptyText?: string
+  stickyHeader?: boolean
+  stickyHeaderClassName?: string
 }
 
 // 计算列宽度的辅助函数
@@ -145,15 +147,25 @@ function VirtualRow<T>({
 }
 
 // 表头组件
-function TableHeader<T>({ 
-  columns, 
-  columnWidths 
-}: { 
+function TableHeader<T>({
+  columns,
+  columnWidths,
+  stickyHeader,
+  stickyHeaderClassName,
+}: {
   columns: Column<T>[]
   columnWidths: Array<{ width: number | string; flexGrow: number; isPercentage: boolean }>
+  stickyHeader?: boolean
+  stickyHeaderClassName?: string
 }) {
   return (
-    <div className="flex items-center bg-muted/50 border-b font-medium text-sm sticky top-0 z-10 w-full">
+    <div
+      className={cn(
+        "flex items-center bg-muted/50 border-b font-medium text-sm w-full",
+        stickyHeader ? "sticky top-0 z-10" : undefined,
+        stickyHeaderClassName
+      )}
+    >
       {columns.map((column, colIndex) => {
         const { width, flexGrow, isPercentage } = columnWidths[colIndex] || { width: 100, flexGrow: 0, isPercentage: false }
         
@@ -192,7 +204,9 @@ export function VirtualTable<T>({
   className,
   onRowClick,
   loading = false,
-  emptyText = '暂无数据'
+  emptyText = '暂无数据',
+  stickyHeader = false,
+  stickyHeaderClassName,
 }: VirtualTableProps<T>) {
   const containerRef = useRef<HTMLDivElement>(null)
   const tableRef = useRef<HTMLDivElement>(null)
@@ -261,7 +275,12 @@ export function VirtualTable<T>({
   if (loading) {
     return (
       <div ref={tableRef} className={cn("border rounded-lg w-full", className)}>
-        <TableHeader columns={columns} columnWidths={columnWidths} />
+        <TableHeader
+          columns={columns}
+          columnWidths={columnWidths}
+          stickyHeader={stickyHeader}
+          stickyHeaderClassName={stickyHeaderClassName}
+        />
         <div 
           className="flex items-center justify-center text-muted-foreground"
           style={{ height: containerHeight }}
@@ -278,7 +297,12 @@ export function VirtualTable<T>({
   if (data.length === 0) {
     return (
       <div ref={tableRef} className={cn("border rounded-lg w-full", className)}>
-        <TableHeader columns={columns} columnWidths={columnWidths} />
+        <TableHeader
+          columns={columns}
+          columnWidths={columnWidths}
+          stickyHeader={stickyHeader}
+          stickyHeaderClassName={stickyHeaderClassName}
+        />
         <div 
           className="flex items-center justify-center text-muted-foreground"
           style={{ height: containerHeight }}
@@ -294,7 +318,12 @@ export function VirtualTable<T>({
 
   return (
     <div ref={tableRef} className={cn("border rounded-lg overflow-hidden w-full", className)}>
-      <TableHeader columns={columns} columnWidths={columnWidths} />
+      <TableHeader
+        columns={columns}
+        columnWidths={columnWidths}
+        stickyHeader={stickyHeader}
+        stickyHeaderClassName={stickyHeaderClassName}
+      />
       <div 
         ref={containerRef}
         className="overflow-auto"

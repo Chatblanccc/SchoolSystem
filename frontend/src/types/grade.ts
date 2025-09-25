@@ -91,6 +91,8 @@ export interface ScoreAnalyticsRow {
   goodRate: number      // 良好率 %
   lowRate: number       // 低分率 %
   aboveAvgRate: number  // 超均率 %（高于年级均分）
+  passRate: number      // 合格率 %（≥合格线）
+  compareAvgRate?: number | null // 比均率（年级均分 / 班均分）
   classAvgScore?: number | null
   gradeAvgScore?: number | null
 }

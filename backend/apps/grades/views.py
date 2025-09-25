@@ -469,6 +469,54 @@ class ScoreViewSet(viewsets.ModelViewSet):
         - 阈值均以每条记录自己的满分 full_score 为基准。
         - 超均率：班级内该科成绩 > 年级（本次考试）该科平均分 的人数占比。
         """
+
+        computed = self._compute_analytics_results(request)
+        if isinstance(computed, Response):
+            return computed
+
+        results, timestamp = computed
+
+        # 兼容：/scores/analytics/?format=csv 直接返回 CSV
+        if (request.query_params.get("format") or "").lower() == "csv":
+            return self._export_analytics_csv(results)
+
+        return Response({
+            "success": True,
+            "data": {"results": results},
+            "timestamp": timestamp,
+        })
+
+    @action(detail=False, methods=["get"], url_path="analytics-export")
+    def analytics_export(self, request):
+        """导出成绩分析结果为 CSV。"""
+
+        computed = self._compute_analytics_results(request)
+        if isinstance(computed, Response):
+            return computed
+
+        results, _timestamp = computed
+        format_param = request.query_params.get("format", "csv").lower()
+        if format_param != "csv":
+            return Response(
+                {
+                    "success": False,
+                    "error": {
+                        "code": "UNSUPPORTED_FORMAT",
+                        "message": "暂不支持该导出格式",
+                    },
+                    "timestamp": timezone.now().isoformat(),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return self._export_analytics_csv(results)
+
+    # 兼容旧路径：/scores/analytics/export/
+    @action(detail=False, methods=["get"], url_path="analytics/export")
+    def analytics_export_slash(self, request):
+        return self.analytics_export(request)
+
+    def _compute_analytics_results(self, request):
         exam_id = request.query_params.get("exam")
         if not exam_id:
             return Response(
@@ -480,14 +528,12 @@ class ScoreViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # 解析阈值（比例 0~1）
         def _get_ratio(name: str, default: float) -> float:
             try:
                 v = float(request.query_params.get(name, default))
                 if v < 0:
                     v = 0.0
                 if v > 1:
-                    # 若传入 60、80、90 这类百分数，转换为比例
                     v = v / 100.0
                 return v
             except Exception:
@@ -496,8 +542,8 @@ class ScoreViewSet(viewsets.ModelViewSet):
         excellent_ratio = _get_ratio("excellent", 0.9)
         good_ratio = _get_ratio("good", 0.8)
         low_ratio = _get_ratio("low", 0.6)
+        pass_ratio = _get_ratio("pass", low_ratio)
 
-        # 计算整场考试（年级）层面的科目平均分，作为超均率的基线
         exam_all_qs = (
             Score.objects.filter(exam_id=exam_id, score__isnull=False)
             .select_related("course")
@@ -516,7 +562,6 @@ class ScoreViewSet(viewsets.ModelViewSet):
             cid: (course_sum[cid] / course_cnt[cid]) for cid in course_sum.keys() if course_cnt.get(cid)
         }
 
-        # 过滤统计集（可选班级/科目）
         qs = (
             Score.objects.filter(exam_id=exam_id)
             .select_related("class_ref", "course")
@@ -529,21 +574,23 @@ class ScoreViewSet(viewsets.ModelViewSet):
         if course:
             qs = qs.filter(course_id=course)
 
-        # 按 班级×科目 聚合
         from collections import defaultdict
 
-        groups = defaultdict(lambda: {
-            "class_id": None,
-            "class_name": None,
-            "course_id": None,
-            "course_name": None,
-            "valid_count": 0,
-            "excellent": 0,
-            "good": 0,
-            "low": 0,
-            "above_avg": 0,
-            "sum_score": 0.0,
-        })
+        groups = defaultdict(
+            lambda: {
+                "class_id": None,
+                "class_name": None,
+                "course_id": None,
+                "course_name": None,
+                "valid_count": 0,
+                "excellent": 0,
+                "good": 0,
+                "low": 0,
+                "above_avg": 0,
+                "passed": 0,
+                "sum_score": 0.0,
+            }
+        )
 
         for s in qs:
             key = (str(s.class_ref_id), str(s.course_id))
@@ -551,12 +598,11 @@ class ScoreViewSet(viewsets.ModelViewSet):
             if g["class_id"] is None:
                 g["class_id"] = str(s.class_ref_id)
                 g["course_id"] = str(s.course_id)
-                # 懒取名称，避免额外查询
                 g["class_name"] = s.class_ref.name if getattr(s, "class_ref", None) else ""
-                # 优先从预存名称表取，兜底 model name
-                g["course_name"] = course_name_by_id.get(str(s.course_id)) or (s.course.name if getattr(s, "course", None) else "")
+                g["course_name"] = course_name_by_id.get(str(s.course_id)) or (
+                    s.course.name if getattr(s, "course", None) else ""
+                )
 
-            # 仅对有分数的记录计入分母与分类
             if s.score is None:
                 continue
             score_val = float(s.score)
@@ -570,36 +616,79 @@ class ScoreViewSet(viewsets.ModelViewSet):
                 g["good"] += 1
             if score_val < low_ratio * full_val:
                 g["low"] += 1
+            if score_val >= pass_ratio * full_val:
+                g["passed"] += 1
 
             avg_grade = course_avg.get(str(s.course_id))
             if avg_grade is not None and score_val > avg_grade:
                 g["above_avg"] += 1
 
-        # 构造返回
         results = []
         for g in groups.values():
             denom = g["valid_count"] or 1
             class_avg = (g["sum_score"] / denom) if g["valid_count"] else None
             grade_avg = course_avg.get(g["course_id"]) if g["course_id"] in course_avg else None
-            results.append({
-                "classId": g["class_id"],
-                "className": g["class_name"] or "",
-                "courseId": g["course_id"],
-                "courseName": g["course_name"] or "",
-                "sampleSize": g["valid_count"],
-                "excellentRate": round(g["excellent"] * 100.0 / denom, 2) if g["valid_count"] else 0.0,
-                "goodRate": round(g["good"] * 100.0 / denom, 2) if g["valid_count"] else 0.0,
-                "lowRate": round(g["low"] * 100.0 / denom, 2) if g["valid_count"] else 0.0,
-                "aboveAvgRate": round(g["above_avg"] * 100.0 / denom, 2) if g["valid_count"] else 0.0,
-                "classAvgScore": round(class_avg, 2) if class_avg is not None else None,
-                "gradeAvgScore": round(grade_avg, 2) if grade_avg is not None else None,
-            })
+            compare_ratio = None
+            if grade_avg is not None and class_avg and class_avg != 0:
+                compare_ratio = round(grade_avg / class_avg, 4)
 
-        # 排序：按班级、科目
+            results.append(
+                {
+                    "classId": g["class_id"],
+                    "className": g["class_name"] or "",
+                    "courseId": g["course_id"],
+                    "courseName": g["course_name"] or "",
+                    "sampleSize": g["valid_count"],
+                    "excellentRate": round(g["excellent"] * 100.0 / denom, 2) if g["valid_count"] else 0.0,
+                    "goodRate": round(g["good"] * 100.0 / denom, 2) if g["valid_count"] else 0.0,
+                    "lowRate": round(g["low"] * 100.0 / denom, 2) if g["valid_count"] else 0.0,
+                    "aboveAvgRate": round(g["above_avg"] * 100.0 / denom, 2) if g["valid_count"] else 0.0,
+                    "passRate": round(g["passed"] * 100.0 / denom, 2) if g["valid_count"] else 0.0,
+                    "compareAvgRate": compare_ratio,
+                    "classAvgScore": round(class_avg, 2) if class_avg is not None else None,
+                    "gradeAvgScore": round(grade_avg, 2) if grade_avg is not None else None,
+                }
+            )
+
         results.sort(key=lambda r: ((r.get("className") or ""), (r.get("courseName") or "")))
+        return results, timezone.now().isoformat()
 
-        return Response({
-            "success": True,
-            "data": {"results": results},
-            "timestamp": timezone.now().isoformat(),
-        })
+    def _export_analytics_csv(self, rows):
+        import csv
+        from io import StringIO
+
+        csv_buffer = StringIO()
+        writer = csv.writer(csv_buffer)
+        writer.writerow([
+            "班级",
+            "科目",
+            "样本数",
+            "优秀率(%)",
+            "良好率(%)",
+            "低分率(%)",
+            "合格率(%)",
+            "超均率(%)",
+            "班均分",
+            "年级均分",
+            "比均率",
+        ])
+
+        for item in rows or []:
+            writer.writerow([
+                item.get("className", ""),
+                item.get("courseName", ""),
+                item.get("sampleSize", ""),
+                item.get("excellentRate", ""),
+                item.get("goodRate", ""),
+                item.get("lowRate", ""),
+                item.get("passRate", ""),
+                item.get("aboveAvgRate", ""),
+                item.get("classAvgScore", ""),
+                item.get("gradeAvgScore", ""),
+                item.get("compareAvgRate", ""),
+            ])
+
+        filename = f"score_analytics_{timezone.now().strftime('%Y%m%d%H%M%S')}.csv"
+        response = HttpResponse(csv_buffer.getvalue(), content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response

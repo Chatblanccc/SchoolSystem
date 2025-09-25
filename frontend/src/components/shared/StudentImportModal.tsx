@@ -19,11 +19,26 @@ export function StudentImportModal({ isOpen, onClose, onImported }: StudentImpor
     if (!file) { alert("请选择 CSV 文件"); return }
     try {
       setSubmitting(true)
-      await studentService.importStudents(file)
+      const result = await studentService.importStudents(file)
+      const errors = (result as any)?.errors || (result as any)?.details
+      if (Array.isArray(errors) && errors.length > 0) {
+        const first = errors[0]
+        const message = first?.message ? `第 ${first.row || '-'} 行：${first.message}` : "部分数据导入失败"
+        alert(message)
+        return
+      }
       onImported()
       onClose()
-    } catch (e) {
-      alert("导入失败，请检查文件格式")
+    } catch (e: any) {
+      const responseData = e?.response?.data
+      const details = responseData?.error?.details
+      if (Array.isArray(details) && details.length > 0) {
+        const lines = details.slice(0, 5).map((item: any) => `第 ${item.row || '-'} 行：${item.message || '未知错误'}`)
+        const more = details.length > 5 ? `\n... 还有 ${details.length - 5} 条错误` : ''
+        alert(`导入失败：\n${lines.join('\n')}${more}`)
+      } else {
+        alert(responseData?.error?.message || "导入失败，请检查文件格式")
+      }
     } finally {
       setSubmitting(false)
     }
