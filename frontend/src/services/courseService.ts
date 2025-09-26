@@ -15,6 +15,7 @@ function mapDtoToOffering(dto: any): CourseOfferingItem {
     courseName: dto.courseName ?? dto.course_name ?? dto.name ?? '',
     category: dto.category,
     weeklyHours: dto.weeklyHours ?? dto.weekly_hours ?? dto.periods,
+    fullScore: dto.full_score ?? dto.fullScore ?? null,
     teacherId: dto.teacherId ?? dto.teacher_id,
     teacherName: dto.teacherName ?? dto.teacher_name,
     grade: dto.grade ?? dto.grade_name,
@@ -68,6 +69,7 @@ export const courseService = {
     courseName: string
     category?: string
     weeklyHours?: number
+    fullScore?: number | null
     status?: string
     remark?: string
     teacherId?: string
@@ -81,6 +83,7 @@ export const courseService = {
       name: input.courseName,
       category: input.category ?? '必修',
       weekly_hours: input.weeklyHours ?? 1,
+      full_score: input.fullScore ?? undefined,
       status: mappedStatus ?? '启用',
       description: input.remark || '',
     }
@@ -133,6 +136,7 @@ export const courseService = {
     courseName?: string
     category?: string
     weeklyHours?: number
+    fullScore?: number | null
     status?: string
     remark?: string
     teacherId?: string
@@ -146,6 +150,7 @@ export const courseService = {
       ...(input.courseName !== undefined ? { name: input.courseName } : {}),
       ...(input.category !== undefined ? { category: input.category } : {}),
       ...(input.weeklyHours !== undefined ? { weekly_hours: input.weeklyHours } : {}),
+      ...(input.fullScore !== undefined ? { full_score: input.fullScore } : {}),
       ...(input.status !== undefined ? { status: mappedStatus } : {}),
       ...(input.remark !== undefined ? { description: input.remark || '' } : {}),
     }

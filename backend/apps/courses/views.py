@@ -24,9 +24,9 @@ class CourseViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], url_path="export")
     def export_courses(self, request):
         qs = self.filter_queryset(self.get_queryset())
-        rows = ["课程学段,课程名称,课程类型,周课时,状态"]
+        rows = ["课程学段,课程名称,课程类型,周课时,分值,状态"]
         for c in qs:
-            rows.append(f"{c.code},{c.name},{c.category},{c.weekly_hours},{c.status}")
+            rows.append(f"{c.code},{c.name},{c.category},{c.weekly_hours},{c.full_score or ''},{c.status}")
         csv_content = "\n".join(rows)
         response = HttpResponse(csv_content, content_type="text/csv; charset=utf-8")
         response["Content-Disposition"] = 'attachment; filename="courses.csv"'

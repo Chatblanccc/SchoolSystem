@@ -86,7 +86,7 @@ export function TimetableEditModal({ isOpen, onClose, lesson, periodSlots, onSav
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div className="relative w-full max-w-3xl mx-4 bg-background rounded-lg shadow-lg overflow-visible">
         <div className="flex items-center justify-between p-5 border-b">
           <h3 className="text-lg font-semibold">编辑课程</h3>

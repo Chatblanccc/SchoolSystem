@@ -13,6 +13,7 @@ interface CourseFormValues {
   courseName: string
   category: '必修' | '选修'
   weeklyHours?: number
+  fullScore?: number | null
   teacherId?: string
   teacherName?: string
   classId?: string
@@ -41,6 +42,7 @@ export function CourseFormModal({ isOpen, title = '新增开课', defaultValues,
     courseName: '',
     category: '必修',
     weeklyHours: 1,
+    fullScore: null,
     teacherId: '',
     teacherName: '',
     classId: '',
@@ -174,6 +176,21 @@ export function CourseFormModal({ isOpen, title = '新增开课', defaultValues,
               <div className="text-sm mb-1">周课时</div>
               <Input type="number" min={1} step={1} value={values.weeklyHours || 1} onChange={(e) => setValues({ ...values, weeklyHours: Number(e.target.value || 1) })} placeholder="如 4" />
             </div>
+
+          <div>
+            <div className="text-sm mb-1">分值</div>
+            <Input
+              type="number"
+              min={0}
+              step={1}
+              value={values.fullScore ?? ''}
+              onChange={(e) => {
+                const raw = e.target.value
+                setValues({ ...values, fullScore: raw === '' ? null : Number(raw) })
+              }}
+              placeholder="如 100（可留空）"
+            />
+          </div>
 
             {/* 移除选课类型 */}
             <div>

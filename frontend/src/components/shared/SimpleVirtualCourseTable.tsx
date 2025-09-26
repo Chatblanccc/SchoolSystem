@@ -83,6 +83,7 @@ export function SimpleVirtualCourseTable({ offerings, height = 500, onViewDetail
     createColumn('teacherName', '授课老师', '12%', { render: (v) => v || '-' }),
     createColumn('className', '班级', '12%', { render: (v) => v || '-' }),
     createColumn('weeklyHours', '周课时', '10%'),
+    createColumn('fullScore', '分值', '10%', { render: (v) => v ?? '-' }),
     createColumn('status', '状态', '10%', { render: (v) => <Badge variant={statusVariant(v as any)} className="text-xs">{v}</Badge> }),
     createColumn('actions', '操作', '20%', {
       render: (_v, record) => (

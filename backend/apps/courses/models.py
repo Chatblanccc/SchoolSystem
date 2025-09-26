@@ -7,6 +7,8 @@ class Course(BaseModel):
     name = models.CharField(max_length=128, verbose_name="课程名称")
     category = models.CharField(max_length=16, choices=[("必修", "必修"), ("选修", "选修")], default="必修")
     weekly_hours = models.PositiveIntegerField(default=1, verbose_name="周课时")
+    # 课程分值：由使用者手动设定，无固定既定值，可为空
+    full_score = models.PositiveIntegerField(null=True, blank=True, verbose_name="课程分值")
     description = models.TextField(blank=True, default="", verbose_name="课程简介")
     status = models.CharField(max_length=8, choices=[("启用", "启用"), ("停用", "停用")], default="启用")
 

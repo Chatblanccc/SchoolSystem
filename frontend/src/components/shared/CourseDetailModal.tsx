@@ -36,7 +36,7 @@ export function CourseDetailModal({ course, isOpen, onClose, onEdit, onDelete }:
   const handleDelete = () => { onDelete?.(course); onClose() }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={handleBackdropClick}>
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={handleBackdropClick}>
       <div className="relative w-full max-w-3xl max-h[90vh] mx-4 bg-background rounded-lg shadow-lg overflow-hidden">
         <div className="flex items-center justify-between p-6 border-b">
           <div>
@@ -59,6 +59,7 @@ export function CourseDetailModal({ course, isOpen, onClose, onEdit, onDelete }:
             <Info label="课程学段" value={course.courseCode || '-'} />
             <Info label="课程类型" value={course.category || '-'} />
             <Info label="周课时" value={String(course.weeklyHours ?? '-') } />
+            <Info label="分值" value={course.fullScore != null ? String(course.fullScore) : '-'} />
             <Info label="授课老师" value={course.teacherName || '-'} />
             <Info label="班级" value={course.className || '-'} />
           </div>

@@ -98,7 +98,7 @@ export function StudentFormModal({ isOpen, title = "新增学生", defaultValues
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) close() }}>
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) close() }}>
       <div className="relative w-full max-w-2xl mx-4 bg-background rounded-lg shadow-lg overflow-hidden">
         <div className="flex items-center justify-between p-5 border-b">
           <h3 className="text-lg font-semibold">{title}</h3>

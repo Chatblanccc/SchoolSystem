@@ -263,7 +263,7 @@ export const gradeService = {
       pass: params.pass,
     })
     const header = [
-      '班级','科目','样本数','优秀率(%)','良好率(%)','低分率(%)','合格率(%)','超均率(%)','班均分','年级均分','比均率'
+      '班级','科目','样本数','优秀率(%)','良好率(%)','低分率(%)','合格率(%)','超均率(%)','班均分','年级均分','比均率(%)'
     ]
     const escape = (v: any) => {
       if (v == null) return ''
@@ -283,7 +283,7 @@ export const gradeService = {
         escape(r.aboveAvgRate?.toFixed?.(2) ?? r.aboveAvgRate ?? ''),
         escape(r.classAvgScore != null ? Number(r.classAvgScore).toFixed(2) : ''),
         escape(r.gradeAvgScore != null ? Number(r.gradeAvgScore).toFixed(2) : ''),
-        escape(r.compareAvgRate != null ? Number(r.compareAvgRate).toFixed(2) : ''),
+        escape(r.compareAvgRate != null ? (Number(r.compareAvgRate) * 100).toFixed(1) : ''),
       ].join(','))
     }
     const csv = lines.join('\n')

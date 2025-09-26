@@ -32,7 +32,7 @@ export function TeacherBulkActionModal({ isOpen, onClose, selectedIds, onUpdated
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <div className="relative w-full max-w-md mx-4 bg-background rounded-lg shadow-lg overflow-hidden">
         <div className="flex items-center justify-between p-5 border-b">
           <h3 className="text-lg font-semibold">批量更新在职状态</h3>

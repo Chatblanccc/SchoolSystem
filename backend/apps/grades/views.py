@@ -629,8 +629,9 @@ class ScoreViewSet(viewsets.ModelViewSet):
             class_avg = (g["sum_score"] / denom) if g["valid_count"] else None
             grade_avg = course_avg.get(g["course_id"]) if g["course_id"] in course_avg else None
             compare_ratio = None
-            if grade_avg is not None and class_avg and class_avg != 0:
-                compare_ratio = round(grade_avg / class_avg, 4)
+            # 比均率：班级均分 / 年级均分
+            if grade_avg is not None and grade_avg != 0 and class_avg is not None:
+                compare_ratio = round(class_avg / grade_avg, 4)
 
             results.append(
                 {
@@ -670,7 +671,7 @@ class ScoreViewSet(viewsets.ModelViewSet):
             "超均率(%)",
             "班均分",
             "年级均分",
-            "比均率",
+            "比均率(%)",
         ])
 
         for item in rows or []:
@@ -685,7 +686,7 @@ class ScoreViewSet(viewsets.ModelViewSet):
                 item.get("aboveAvgRate", ""),
                 item.get("classAvgScore", ""),
                 item.get("gradeAvgScore", ""),
-                item.get("compareAvgRate", ""),
+                (round(float(item.get("compareAvgRate", 0.0)) * 100.0, 1) if item.get("compareAvgRate") is not None else ""),
             ])
 
         filename = f"score_analytics_{timezone.now().strftime('%Y%m%d%H%M%S')}.csv"

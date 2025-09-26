@@ -38,7 +38,7 @@ export function TeacherDetailModal({ teacher, isOpen, onClose, onEdit, onDelete 
   const handleDelete = () => { onDelete?.(teacher); onClose() }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={handleBackdropClick}>
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={handleBackdropClick}>
       <div className="relative w-full max-w-3xl max-h[90vh] mx-4 bg-background rounded-lg shadow-lg overflow-hidden">
         <div className="flex items-center justify-between p-6 border-b">
           <div>

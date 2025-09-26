@@ -16,6 +16,7 @@ class CourseListSerializer(serializers.ModelSerializer):
             "name",
             "category",
             "weekly_hours",
+            "full_score",
             "status",
             "teacher_name",
             "class_name",
@@ -60,6 +61,7 @@ class CourseDetailSerializer(serializers.ModelSerializer):
             "name",
             "category",
             "weekly_hours",
+            "full_score",
             "description",
             "status",
             # 写入字段

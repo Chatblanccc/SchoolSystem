@@ -10,6 +10,7 @@ export interface CourseOfferingItem {
     courseName: string
     category?: CourseCategory
     weeklyHours?: number
+    fullScore?: number | null
     teacherId?: string
     teacherName?: string
     grade?: string
