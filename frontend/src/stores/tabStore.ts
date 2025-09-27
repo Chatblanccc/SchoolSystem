@@ -132,7 +132,18 @@ export const useTabStore = create<TabState>()(
     }),
     {
       name: 'tab-storage',
-      version: 4 // 增加版本号，清除旧数据
+      version: 5,
+      migrate: () => ({
+        tabs: [
+          {
+            id: 'dashboard',
+            title: '仪表盘',
+            page: 'dashboard',
+            closable: false
+          }
+        ],
+        activeTabId: 'dashboard'
+      })
     }
   )
 )

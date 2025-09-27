@@ -5,6 +5,7 @@ from django.utils.timezone import now
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.contrib.auth import update_session_auth_hash
+from .models import AcademicSetting
 
 
 @api_view(["GET", "PATCH"])
@@ -113,6 +114,63 @@ def change_password(request):
             "success": True,
             "data": {"updated": True},
             "message": "密码修改成功",
+            "timestamp": now().isoformat(),
+        }
+    )
+
+
+@api_view(["GET", "PATCH"])
+@permission_classes([IsAuthenticated])
+def academic_settings(request):
+    """获取或更新全局学年/学期设置。
+    GET: 返回 { currentYear, currentTerm }
+    PATCH: 支持部分字段更新，校验最小长度，返回统一包装
+    """
+    setting = AcademicSetting.get_or_create_default()
+    if request.method == "PATCH":
+        current_year = request.data.get("currentYear")
+        current_term = request.data.get("currentTerm")
+
+        details = {}
+        updated = False
+        if current_year is not None:
+            s = str(current_year).strip()
+            if len(s) < 4:
+                details.setdefault("currentYear", []).append("学年格式不正确")
+            else:
+                setting.current_year = s
+                updated = True
+        if current_term is not None:
+            s = str(current_term).strip()
+            if len(s) < 3:
+                details.setdefault("currentTerm", []).append("学期格式不正确")
+            else:
+                setting.current_term = s
+                updated = True
+
+        if details:
+            return Response(
+                {
+                    "success": False,
+                    "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "数据验证失败",
+                        "details": details,
+                    },
+                    "timestamp": now().isoformat(),
+                },
+                status=400,
+            )
+
+        if updated:
+            setting.save(update_fields=["current_year", "current_term", "updated_at"])
+
+    data = {"currentYear": setting.current_year, "currentTerm": setting.current_term}
+    return Response(
+        {
+            "success": True,
+            "data": data,
+            "message": "操作成功",
             "timestamp": now().isoformat(),
         }
     )

@@ -8,6 +8,7 @@ import { toast } from "@/hooks/use-toast"
 import { Modal } from "@/components/ui/modal"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { useTabStore } from "@/stores/tabStore"
 
 type RawUser = {
   username?: string
@@ -25,6 +26,7 @@ export function Header() {
   const [oldPassword, setOldPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [saving, setSaving] = useState(false)
+  const clearTabs = useTabStore((state) => state.clearTabs)
 
   const applyUser = (raw: any) => {
     const user: RawUser | null = raw ? (raw.data ?? raw) : null
@@ -153,7 +155,12 @@ export function Header() {
                   </div>
                 </DropdownItem>
                 <div className="my-1 h-px bg-border" />
-                <DropdownItem onClick={() => authService.logout()}>
+                <DropdownItem
+                  onClick={() => {
+                    clearTabs()
+                    authService.logout()
+                  }}
+                >
                   <div className="flex items-center gap-2 text-red-600">
                     <LogOut className="h-4 w-4" />
                     <span>退出登录</span>

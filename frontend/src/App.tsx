@@ -19,11 +19,14 @@ import UserManagement from '@/pages/users/UserManagement'
 import { useAuthInfoStore } from '@/stores/authInfo'
 import { Toaster } from '@/components/ui/toast'
 import TestScroll from '@/pages/grades/TestScroll'
+import SystemSettings from '@/pages/settings/SystemSettings'
+import { useTabStore } from '@/stores/tabStore'
 
 type Page = 'dashboard' | 'students' | 'classes' | 'teachers' | 'courses' | 'schedule' | 'grades' | 'analytics' | 'studentStatus' | 'newStudent' | 'studentTransfer' | 'graduationQuery' | 'settings' | 'users'
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard')
   const { isAdmin, setIsAdmin } = useAuthInfoStore()
+  const clearTabs = useTabStore((state) => state.clearTabs)
 
   const renderPage = () => {
     switch (currentPage) {
@@ -58,7 +61,6 @@ function App() {
         return <ExamCreate />
       }
       case 'studentStatus':
-      case 'settings':
         return (
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
@@ -67,6 +69,19 @@ function App() {
             </div>
           </div>
         )
+      case 'settings': {
+        if (!isAdmin) {
+          return (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <h2 className="text-2xl font-bold mb-2">未授权</h2>
+                <p className="text-muted-foreground">只有管理员可以访问“系统设置”。</p>
+              </div>
+            </div>
+          )
+        }
+        return <SystemSettings />
+      }
       case 'users':
         return <UserManagement />
       case 'newStudent':
@@ -99,6 +114,7 @@ function App() {
       if (rawToken && !hasValidToken) {
         localStorage.removeItem('access_token')
         localStorage.removeItem('refresh_token')
+        clearTabs()
       }
       setUserLoaded(true)
       return
@@ -107,6 +123,7 @@ function App() {
       const user = await authService.getCurrentUser()
       if (!user) {
         // token 已失效或网络异常时，回到登录页
+        clearTabs()
         localStorage.removeItem('access_token')
         localStorage.removeItem('refresh_token')
         window.location.href = '/login'
@@ -122,15 +139,30 @@ function App() {
     window.history.replaceState(null, '', '/login')
   }
 
+  let content: React.ReactNode
+
+  if (!isAuthenticated || isLoginRoute) {
+    content = <Login />
+  } else if (!userLoaded) {
+    content = (
+      <div className="flex items-center justify-center h-screen">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <span className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <span>正在验证会话...</span>
+        </div>
+      </div>
+    )
+  } else {
+    content = (
+      <Layout onNavigate={setCurrentPage} currentPage={currentPage} isAdmin={isAdmin}>
+        {renderPage()}
+      </Layout>
+    )
+  }
+
   return (
     <ThemeProvider>
-      {(!isAuthenticated || isLoginRoute) ? (
-        <Login />
-      ) : (
-        <Layout onNavigate={setCurrentPage} currentPage={currentPage} isAdmin={isAdmin}>
-          {userLoaded ? renderPage() : null}
-        </Layout>
-      )}
+      {content}
       <Toaster />
     </ThemeProvider>
   )

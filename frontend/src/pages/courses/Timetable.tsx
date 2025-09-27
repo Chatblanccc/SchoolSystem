@@ -7,8 +7,10 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { TimetableCreateModal } from '@/components/shared/TimetableCreateModal'
 import { timetableService } from '@/services/timetableService'
 import type { LessonItem, TimetableView, TimetableMode, PeriodSlot } from '@/types/timetable'
+import { useAcademicStore } from '@/stores/academicStore'
 
 export default function Timetable() {
+  const { currentTerm, load } = useAcademicStore()
   const schoolPeriodSlots: PeriodSlot[] = [
     { no: 1, label: '第1节', startTime: '08:00', endTime: '08:40' },
     { no: 2, label: '第2节', startTime: '08:50', endTime: '09:30' },
@@ -23,7 +25,7 @@ export default function Timetable() {
     { no: 9, label: '第8节', startTime: '16:10', endTime: '16:50' },
     { no: 10, label: '第9节', startTime: '17:05', endTime: '17:45' },
   ]
-  const [term, setTerm] = useState('2024-2025-1')
+  const [term, setTerm] = useState(currentTerm || '2024-2025-1')
   const [week, setWeek] = useState<number>(1)
   const [view] = useState<TimetableView>('class')
   const [mode, setMode] = useState<TimetableMode>('period')
@@ -39,6 +41,14 @@ export default function Timetable() {
   const [confirmOpen, setConfirmOpen] = useState(false)
 
   const query = useMemo(() => ({ term, week, view, classId: view === 'class' ? targetId : undefined, teacherId: view === 'teacher' ? targetId : undefined, roomId: view === 'room' ? targetId : undefined }), [term, week, view, targetId])
+
+  useEffect(() => {
+    if (!currentTerm) {
+      load()
+    } else {
+      setTerm(currentTerm)
+    }
+  }, [currentTerm])
 
   useEffect(() => {
     let cancelled = false

@@ -1,4 +1,5 @@
 import { api } from "../lib/api"
+import { useTabStore } from "@/stores/tabStore"
 
 interface Tokens {
   access?: string
@@ -36,6 +37,8 @@ export const authService = {
     }
     localStorage.setItem("access_token", tokens.access)
     if (tokens.refresh) localStorage.setItem("refresh_token", tokens.refresh)
+    // 登录成功后重置标签页，确保新会话从默认状态开始
+    useTabStore.getState().clearTabs()
   },
 
   async getCurrentUser(): Promise<{ id: number; username: string; name: string; email?: string; is_staff?: boolean; is_superuser?: boolean } | null> {
@@ -59,6 +62,7 @@ export const authService = {
   },
 
   logout() {
+    useTabStore.getState().clearTabs()
     localStorage.removeItem("access_token")
     localStorage.removeItem("refresh_token")
     window.location.href = "/login"
