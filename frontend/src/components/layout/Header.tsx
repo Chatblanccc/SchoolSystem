@@ -1,4 +1,4 @@
-﻿import { Bell, Search, LogOut, UserCircle, UserCog, KeyRound } from "lucide-react"
+﻿import { Bell, Search, LogOut, UserCircle, UserCog, KeyRound, Menu } from "lucide-react"
 import { useEffect, useState } from "react"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { authService } from "@/services/authService"
@@ -9,6 +9,8 @@ import { Modal } from "@/components/ui/modal"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useTabStore } from "@/stores/tabStore"
+import { useSidebarStore } from "@/stores/sidebarStore"
+import { cn } from "@/lib/utils"
 
 type RawUser = {
   username?: string
@@ -27,6 +29,7 @@ export function Header() {
   const [newPassword, setNewPassword] = useState("")
   const [saving, setSaving] = useState(false)
   const clearTabs = useTabStore((state) => state.clearTabs)
+  const { toggleCollapse } = useSidebarStore()
 
   const applyUser = (raw: any) => {
     const user: RawUser | null = raw ? (raw.data ?? raw) : null
@@ -108,8 +111,22 @@ export function Header() {
     <>
       <header className="fixed top-0 left-0 right-0 z-50 bg-background border-b dark:bg-card backdrop-blur supports-[backdrop-filter]:bg-background/95">
         <div className="flex items-center justify-between h-16 px-6">
-          <div className="flex items-center flex-1">
-            <h1 className="text-xl font-bold mr-8">BYSS 学校管理系统</h1>
+          <div className="flex items-center flex-1 gap-4">
+            {/* 汉堡菜单按钮 */}
+            <button
+              onClick={toggleCollapse}
+              className={cn(
+                "p-2 hover:bg-accent rounded-lg transition-colors",
+                "flex items-center justify-center"
+              )}
+              title="切换侧边栏"
+              aria-label="切换侧边栏"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            
+            <h1 className="text-xl font-bold">BYSS 学校管理系统</h1>
+            
             <div className="relative w-96">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input

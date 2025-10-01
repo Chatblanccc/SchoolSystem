@@ -4,7 +4,9 @@ import { Sidebar } from "@/components/layout/Sidebar"
 import { TabBar } from "@/components/layout/TabBar"
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary"
 import { useTabStore } from "@/stores/tabStore"
+import { useSidebarStore } from "@/stores/sidebarStore"
 import { toast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils"
 
 type Page = 'dashboard' | 'students' | 'classes' | 'teachers' | 'courses' | 'schedule' | 'grades' | 'analytics' | 'examCreate' | 'studentStatus' | 'newStudent' | 'studentTransfer' | 'graduationQuery' | 'settings' | 'users'
 
@@ -36,6 +38,7 @@ const pageTitles: Record<Page, string> = {
 
 export function Layout({ children, onNavigate, currentPage = 'dashboard', isAdmin = false }: LayoutProps) {
   const { tabs, activeTabId, addTab, removeTab, setActiveTab, clearTabs } = useTabStore()
+  const { isCollapsed } = useSidebarStore()
 
   // 同步标签激活状态到路由：当关闭当前激活标签后，自动跳转到新的激活标签
   useEffect(() => {
@@ -84,7 +87,10 @@ export function Layout({ children, onNavigate, currentPage = 'dashboard', isAdmi
       <div className="relative">
         <Sidebar onNavigate={handleSidebarNavigate as any} currentPage={currentPage as any} isAdmin={isAdmin} />
         {/* 主内容区域使用固定定位，确保不会滑到侧边栏下面 */}
-        <div className="fixed left-64 right-0 top-16 bottom-0 flex flex-col">
+        <div className={cn(
+          "fixed right-0 top-16 bottom-0 flex flex-col transition-all duration-300 ease-in-out z-10",
+          isCollapsed ? "left-20" : "left-64"
+        )}>
           <ErrorBoundary fallback={
             <div className="h-10 bg-muted/20 border-b flex items-center px-4">
               <span className="text-sm text-muted-foreground">标签栏加载失败</span>
