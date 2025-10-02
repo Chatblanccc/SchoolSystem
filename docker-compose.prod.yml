@@ -10,8 +10,6 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
       MYSQL_DATABASE: ${DB_NAME}
-      MYSQL_USER: ${DB_USER}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
     ports:
       - "3308:3306"  # 使用 3308 避免与其他项目冲突
     volumes:
@@ -59,7 +57,7 @@ services:
       - DB_HOST=mysql
       - DB_PORT=3306
       - DB_NAME=${DB_NAME}
-      - DB_USER=${DB_USER}
+      - DB_USER=root
       - DB_PASSWORD=${DB_PASSWORD}
       - REDIS_URL=redis://redis:6379/0
     volumes:
