@@ -1,0 +1,86 @@
+# BYSS School Management System - Development Environment
+version: '3.8'
+
+services:
+  # MySQL 数据库
+  mysql:
+    image: mysql:8.0
+    container_name: byss-mysql-dev
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-1997yx0912}
+      MYSQL_DATABASE: ${DB_NAME:-byss}
+      MYSQL_USER: ${DB_USER:-byss}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-1997yx0912}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    networks:
+      - byss-network
+
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+    container_name: byss-redis-dev
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - byss-network
+
+  # Django 后端
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: byss-backend-dev
+    restart: always
+    environment:
+      - DEBUG=True
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=${DB_NAME:-byss}
+      - DB_USER=${DB_USER:-root}
+      - DB_PASSWORD=${DB_PASSWORD:-1997yx0912}
+      - REDIS_URL=redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - byss-network
+    command: python manage.py runserver 0.0.0.0:8000
+
+  # React 前端
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: byss-frontend-dev
+    restart: always
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - byss-network
+
+volumes:
+  mysql_data:
+  redis_data:
+  static_volume:
+  media_volume:
+
+networks:
+  byss-network:
+    driver: bridge
+
