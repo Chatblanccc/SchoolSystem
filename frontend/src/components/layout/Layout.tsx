@@ -8,7 +8,7 @@ import { useSidebarStore } from "@/stores/sidebarStore"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
-type Page = 'dashboard' | 'students' | 'classes' | 'teachers' | 'courses' | 'schedule' | 'grades' | 'analytics' | 'examCreate' | 'studentStatus' | 'newStudent' | 'studentTransfer' | 'graduationQuery' | 'settings' | 'users'
+type Page = 'dashboard' | 'students' | 'classes' | 'teachers' | 'courses' | 'schedule' | 'grades' | 'analytics' | 'studentStatus' | 'newStudent' | 'studentTransfer' | 'graduationQuery' | 'settings' | 'users'
 
 interface LayoutProps {
   children: ReactNode
@@ -27,7 +27,6 @@ const pageTitles: Record<Page, string> = {
   schedule: '课程表',
   grades: '成绩管理',
   analytics: '成绩分析',
-  examCreate: '考试创建',
   studentStatus: '学籍管理',
   newStudent: '新生入学',
   studentTransfer: '异动办理',

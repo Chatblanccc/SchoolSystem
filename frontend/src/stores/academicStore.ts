@@ -14,7 +14,7 @@ interface AcademicState {
 
 export const useAcademicStore = create<AcademicState>()(
   persist(
-    (set, get) => ({
+    (set, _get) => ({
       currentYear: '',
       currentTerm: '',
       loading: false,

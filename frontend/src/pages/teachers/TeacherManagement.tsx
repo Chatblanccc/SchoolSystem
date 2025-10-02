@@ -17,7 +17,7 @@ export default function TeacherManagement() {
   const [teachers, setTeachers] = useState<TeacherItem[]>([])
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
-  const [tableHeight, setTableHeight] = useState(500)
+  const [tableHeight] = useState(500)
   const [addOpen, setAddOpen] = useState(false)
   const [assignOpen, setAssignOpen] = useState(false)
   const [assignTarget, setAssignTarget] = useState<TeacherItem | null>(null)

@@ -1,4 +1,3 @@
-import React from "react"
 import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { studentService } from "@/services/studentService"

@@ -77,10 +77,10 @@ export function DropdownTrigger({ children, className, onClick, asChild = false 
   }
 
   if (asChild && React.isValidElement(children)) {
-    return React.cloneElement(children, {
-      className: cn("outline-none", children.props.className, className),
+    return React.cloneElement(children as React.ReactElement<any>, {
+      className: cn("outline-none", (children.props as any).className, className),
       onClick: (event: React.MouseEvent) => {
-        children.props.onClick?.(event)
+        (children.props as any).onClick?.(event)
         handleClick()
       }
     })

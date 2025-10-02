@@ -130,6 +130,18 @@ export const timetableService = {
   async deleteLesson(id: string) {
     const res = await api.delete(`/timetable/lessons/${id}/delete/`)
     return res?.data ?? res
+  },
+
+  // 导入课表
+  async importTimetable(file: File, params: { term: string; mode: 'append' | 'overwrite' }) {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('term', params.term)
+    formData.append('mode', params.mode)
+    const res = await api.post('/timetable/import/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    return res?.data ?? res
   }
 }
 

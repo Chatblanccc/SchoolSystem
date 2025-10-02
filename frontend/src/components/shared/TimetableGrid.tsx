@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import type { LessonItem, TimetableMode, PeriodSlot } from '@/types/timetable'
-import { timeToMinutes, getEffectiveTimes, computeTimeLayout } from '@/lib/timetable'
+import { timeToMinutes, computeTimeLayout } from '@/lib/timetable'
 import { cn } from '@/lib/utils'
 
 interface TimetableGridProps {

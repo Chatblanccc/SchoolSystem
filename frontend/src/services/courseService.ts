@@ -1,13 +1,6 @@
 import axios from "axios"
 import type { CourseOfferingItem, CourseQueryParams, PaginatedCourseOfferings } from "@/types/course"
 
-function weekdayToName(weekday?: number): string | undefined {
-  if (!weekday && weekday !== 0) return undefined
-  const map = ['周日','周一','周二','周三','周四','周五','周六']
-  const idx = Math.max(0, Math.min(6, Number(weekday)))
-  return map[idx]
-}
-
 function mapDtoToOffering(dto: any): CourseOfferingItem {
   return {
     id: String(dto.id),

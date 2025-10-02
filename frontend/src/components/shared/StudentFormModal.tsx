@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectItem } from "@/components/ui/select"
-import type { StudentDetailView, StudentStatus, Gender } from "@/types/student"
+import type { StudentStatus, Gender } from "@/types/student"
 import type { ClassItem } from "@/types/class"
 import { classService } from "@/services/classService"
 
@@ -45,7 +45,7 @@ export function StudentFormModal({ isOpen, title = "新增学生", defaultValues
   })
 
   const [classes, setClasses] = useState<ClassItem[]>([])
-  const [loadingClasses, setLoadingClasses] = useState(false)
+  const [_loadingClasses, setLoadingClasses] = useState(false)
 
   useEffect(() => {
     if (defaultValues) {
