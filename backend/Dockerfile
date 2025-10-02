@@ -34,8 +34,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 复制项目文件
 COPY . .
 
-# 创建静态文件目录
-RUN mkdir -p /app/staticfiles /app/media
+# 创建静态文件目录和日志目录
+RUN mkdir -p /app/staticfiles /app/media /app/logs
 
 # 收集静态文件
 RUN python manage.py collectstatic --noinput || true
