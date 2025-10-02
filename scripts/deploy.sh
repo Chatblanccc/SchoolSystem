@@ -55,11 +55,11 @@ sleep 10
 
 # 运行数据库迁移
 echo -e "${YELLOW}[5/7] 运行数据库迁移...${NC}"
-docker-compose -f docker-compose.prod.yml run --rm backend python manage.py migrate --settings=config.settings_prod
+docker-compose -f docker-compose.prod.yml run --rm --network byss_byss-network backend python manage.py migrate --settings=config.settings_prod
 
 # 收集静态文件
 echo -e "${YELLOW}[6/7] 收集静态文件...${NC}"
-docker-compose -f docker-compose.prod.yml run --rm backend python manage.py collectstatic --noinput --settings=config.settings_prod
+docker-compose -f docker-compose.prod.yml run --rm --network byss_byss-network backend python manage.py collectstatic --noinput --settings=config.settings_prod
 
 # 启动所有服务
 echo -e "${YELLOW}[7/7] 启动所有服务...${NC}"
