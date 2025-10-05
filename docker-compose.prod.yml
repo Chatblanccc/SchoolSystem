@@ -51,6 +51,7 @@ services:
     container_name: byss-backend
     restart: always
     environment:
+      - DJANGO_SETTINGS_MODULE=config.settings_prod
       - DEBUG=False
       - SECRET_KEY=${SECRET_KEY}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
