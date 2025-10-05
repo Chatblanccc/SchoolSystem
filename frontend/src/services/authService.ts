@@ -1,4 +1,5 @@
 import { api } from "../lib/api"
+import { navigateToLogin } from "@/utils/navigation"
 import { useTabStore } from "@/stores/tabStore"
 
 interface Tokens {
@@ -65,7 +66,7 @@ export const authService = {
     useTabStore.getState().clearTabs()
     localStorage.removeItem("access_token")
     localStorage.removeItem("refresh_token")
-    window.location.href = "/login"
+    navigateToLogin()
   },
 }
 

@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
 import { authService } from "@/services/authService"
+import { navigateToAppHome } from "@/utils/navigation"
 import { toast } from "@/hooks/use-toast"
 import LightRays from "@/components/ui/LightRays"
 
@@ -29,7 +30,7 @@ export default function Login() {
         // 这里仅做最简单处理：不额外持久化 refresh_token 即可（已在服务内按返回写入）
       }
       toast({ title: "登录成功", description: "正在进入系统..." })
-      window.location.href = "/"
+      navigateToAppHome()
     } catch (err: any) {
       const details = err?.response?.data || err?.message || "登录失败"
       toast({ title: "登录失败", description: typeof details === "string" ? details : JSON.stringify(details), variant: "destructive" })

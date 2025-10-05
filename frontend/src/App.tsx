@@ -19,6 +19,7 @@ import { useAuthInfoStore } from '@/stores/authInfo'
 import { Toaster } from '@/components/ui/toast'
 import SystemSettings from '@/pages/settings/SystemSettings'
 import { useTabStore } from '@/stores/tabStore'
+import { isLoginRoute as isLoginLocation, navigateToLogin, replaceWithLogin } from '@/utils/navigation'
 
 type Page = 'dashboard' | 'students' | 'classes' | 'teachers' | 'courses' | 'schedule' | 'grades' | 'analytics' | 'studentStatus' | 'newStudent' | 'studentTransfer' | 'graduationQuery' | 'settings' | 'users'
 function App() {
@@ -90,7 +91,7 @@ function App() {
   const rawToken = localStorage.getItem('access_token')
   const hasValidToken = !!rawToken && rawToken !== 'undefined' && rawToken !== 'null' && rawToken.includes('.')
   const isAuthenticated = hasValidToken
-  const isLoginRoute = window.location.pathname.startsWith('/login')
+  const isLoginRoute = isLoginLocation()
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -110,7 +111,7 @@ function App() {
         clearTabs()
         localStorage.removeItem('access_token')
         localStorage.removeItem('refresh_token')
-        window.location.href = '/login'
+        navigateToLogin()
         return
       }
       setIsAdmin(!!(user as any)?.is_staff || !!(user as any)?.is_superuser)
@@ -120,7 +121,7 @@ function App() {
 
   if (!isAuthenticated && !isLoginRoute) {
     // 未登录时强制跳转到登录页
-    window.history.replaceState(null, '', '/login')
+    replaceWithLogin()
   }
 
   let content: React.ReactNode
