@@ -29,5 +29,5 @@ COPY nginx/default.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
 
 # 启动 nginx
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["nginx","-g","daemon off;"]
 
