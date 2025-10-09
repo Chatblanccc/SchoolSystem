@@ -22,7 +22,7 @@ function mapDtoToUser(dto: any): UserItem {
 export const userService = {
   async getUsers(params: UserQueryParams = {}): Promise<PaginatedUsers> {
     const { page = 1, pageSize = 20, search = "" } = params
-    const data = await api.get("/users/", {
+    const data = await api.get("users/", {
       params: {
         page,
         page_size: pageSize,
@@ -52,7 +52,7 @@ export const userService = {
       is_staff: input.isStaff ?? false,
       password: input.password,
     }
-    const data = await api.post("/users/", payload)
+    const data = await api.post("users/", payload)
     const body = (data as any)?.data ?? data
     return mapDtoToUser(body)
   },
@@ -66,12 +66,12 @@ export const userService = {
       is_staff: input.isStaff,
     }
     if (input.password) payload.password = input.password
-    const data = await api.patch(`/users/${id}/`, payload)
+    const data = await api.patch(`users/${id}/`, payload)
     const body = (data as any)?.data ?? data
     return mapDtoToUser(body)
   },
 
   async deleteUser(id: string): Promise<void> {
-    await api.delete(`/users/${id}/`)
+    await api.delete(`users/${id}/`)
   },
 }

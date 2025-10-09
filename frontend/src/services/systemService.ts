@@ -7,13 +7,13 @@ export type AcademicSettings = {
 
 export const systemService = {
   async getAcademicSettings(): Promise<AcademicSettings> {
-    const res = await api.get('/system/academic-settings/')
+    const res = await api.get('system/academic-settings/')
     const data = (res?.data ?? res) as AcademicSettings
     return data
   },
 
   async updateAcademicSettings(input: Partial<AcademicSettings>): Promise<AcademicSettings> {
-    const res = await api.patch('/system/academic-settings/', input)
+    const res = await api.patch('system/academic-settings/', input)
     const data = (res?.data ?? res) as AcademicSettings
     return data
   }

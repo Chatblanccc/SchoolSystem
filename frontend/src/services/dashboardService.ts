@@ -192,7 +192,7 @@ export const dashboardService = {
   async getRealtimeStats() {
     try {
       // api 已在拦截器中返回 response.data，这里直接返回即可
-      const data = await api.get('/dashboard/realtime-stats/')
+      const data = await api.get('dashboard/realtime-stats/')
       return data
     } catch (error) {
       console.error('获取实时统计失败:', error)

@@ -46,19 +46,19 @@ function normalizeLessons(payload: any): LessonItem[] {
 export const timetableService = {
   async getMyTimetable(params: { term: string; week: number }): Promise<LessonItem[]> {
     const { term, week } = params
-    const res = await api.get(`/timetable/me/`, { params: { term, week } })
+    const res = await api.get(`timetable/me/`, { params: { term, week } })
     const body: TimetableResponse['data'] = (res?.data ?? res)
     return normalizeLessons(body)
   },
   async getTimetable(params: TimetableQuery): Promise<LessonItem[]> {
     const { view, term, week, classId, teacherId, roomId } = params
-    const base = `/timetable/${view === 'class' ? 'classes' : view === 'teacher' ? 'teachers' : 'rooms'}/`
+    const base = `timetable/${view === 'class' ? 'classes' : view === 'teacher' ? 'teachers' : 'rooms'}/`
     const id = view === 'class' ? classId : view === 'teacher' ? teacherId : roomId
 
     // 非法或占位 ID（如 demo-class-1）时，回退到全校课表以避免 404
     const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
     if (!id || !UUID_RE.test(String(id))) {
-      const res = await api.get(`/timetable/school/`, { params: { term, week } })
+      const res = await api.get(`timetable/school/`, { params: { term, week } })
       const body: TimetableResponse['data'] = (res?.data ?? res)
       return normalizeLessons(body)
     }
@@ -71,7 +71,7 @@ export const timetableService = {
 
   async getSchoolTimetable(params: { term: string; week: number }): Promise<LessonItem[]> {
     const { term, week } = params
-    const res = await api.get(`/timetable/school/`, { params: { term, week } })
+    const res = await api.get(`timetable/school/`, { params: { term, week } })
     const body: TimetableResponse['data'] = (res?.data ?? res)
     return normalizeLessons(body)
   },
@@ -97,7 +97,7 @@ export const timetableService = {
       roomName: input.roomName,
       remark: input.remark,
     }
-    const res = await api.patch(`/timetable/lessons/${id}/update/`, payload)
+    const res = await api.patch(`timetable/lessons/${id}/update/`, payload)
     return res?.data ?? res
   },
 
@@ -122,13 +122,13 @@ export const timetableService = {
       roomName: input.roomName,
       remark: input.remark,
     }
-    const res = await api.post('/timetable/lessons/', payload)
+    const res = await api.post('timetable/lessons/', payload)
     return res?.data ?? res
   },
 
   // 删除单条课次
   async deleteLesson(id: string) {
-    const res = await api.delete(`/timetable/lessons/${id}/delete/`)
+    const res = await api.delete(`timetable/lessons/${id}/delete/`)
     return res?.data ?? res
   },
 
@@ -138,7 +138,7 @@ export const timetableService = {
     formData.append('file', file)
     formData.append('term', params.term)
     formData.append('mode', params.mode)
-    const res = await api.post('/timetable/import/', formData, {
+    const res = await api.post('timetable/import/', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
     return res?.data ?? res

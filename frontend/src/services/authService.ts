@@ -20,11 +20,11 @@ export const authService = {
     // 兼容多种后端登录端点：/auth/login/ 与 SimpleJWT /token/
     const tryEndpoints = async (): Promise<Tokens> => {
       try {
-        const res = await api.post("/auth/login/", input)
+        const res = await api.post("auth/login/", input)
         return extractTokens(res)
       } catch (e: any) {
         // 尝试 SimpleJWT 默认端点
-        const res2 = await api.post("/token/", {
+        const res2 = await api.post("token/", {
           username: input.username,
           password: input.password,
         })
@@ -44,7 +44,7 @@ export const authService = {
 
   async getCurrentUser(): Promise<{ id: number; username: string; name: string; email?: string; is_staff?: boolean; is_superuser?: boolean } | null> {
     try {
-      const res = await api.get('/auth/me/')
+      const res = await api.get('auth/me/')
       const body = res?.data ?? res
       return body ?? null
     } catch (e) {
@@ -53,12 +53,12 @@ export const authService = {
   },
 
   async updateProfile(input: { first_name?: string; last_name?: string; email?: string }) {
-    const res = await api.patch('/auth/me/', input)
+    const res = await api.patch('auth/me/', input)
     return res?.data ?? res
   },
 
   async changePassword(input: { old_password: string; new_password: string }) {
-    const res = await api.post('/auth/change-password/', input)
+    const res = await api.post('auth/change-password/', input)
     return res?.data ?? res
   },
 
